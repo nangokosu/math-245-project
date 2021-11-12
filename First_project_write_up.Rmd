@@ -1,0 +1,25 @@
+---
+title: "Project proposal"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project proposal:
+Our project seeks to use a variety of Gapminder country level statistics from 2016 to determine which variables correlate strongly with the overall level of happiness in a country (as measured by the Happiness Index), and how.
+
+```{r cars}
+df=readRDS("./merged_gapminder_happiness.rds")
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+
