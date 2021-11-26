@@ -1,6 +1,8 @@
 ---
 title: "Project proposal"
-output: word_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -12,24 +14,20 @@ Our project seeks to use a variety of Gapminder country level statistics from 20
 
 ```{r}
 library(tidyverse)
+library(GGally)
 ```
 
 
 ```{r}
 df=readRDS("./merged_gapminder_happiness.rds")
-df=df%>%select(-forest,-mortality) # forest currently contains only NA values
+df_variables=df%>%select(-country,-year)
 ```
 
 
 ```{r}
 summary(df)
-colnames = colnames(df)
-colnames = colnames[-c(1, 2)]
-for(i in colnames) {
-  numeric = sapply(na.omit(df[, i]), function(x){
-    as.numeric(x)
-  })
-  hist = hist(numeric, breaks = 20, main = paste("Distribution of", i))
+for(i in colnames(df_variables)) {
+  hist = hist(na.omit(df_variables[[i]]), breaks = 20, main = paste("Distribution of", i),xlab=NULL)
 }
 ```
 
@@ -91,3 +89,81 @@ Distribution  - decreasing with outliers
 
 foodinsecurity: Prevalence of moderate or severe food insecurity in the population
 Distribution - normal skewed right?
+
+## General observations 
+There are some variables with significant left skew i.e beyond a certain threshold, the variable will most likely not affect the target variable any more (e.g water, sanitation).
+There are some variables with significant right skew i.e below a certain threshold, the variable will most likely not affect the target variable any more (e.g debt).
+There are a lot of variables with substantial numbers of missing values.
+
+## k-means imputation:
+From our summary, we find that foodsecurity and aged_15plus_unemployment_rate_percent have a high number of missing variables. However, in general, our dataset contains very few full entries (23). As such, we employ KNN imputation in order to 
+fill in the missing entries.
+
+```{r}
+library(VIM)
+df_variables_imputed=kNN(df_variables%>%select(-hapiscore_whr),k=10,imp_var=F)
+df_variables_imputed['hapiscore_whr']=df_variables$hapiscore_whr
+```
+
+## checking knn imputation:
+In order to see if our knn imputation significantly affects the relationship between variables that did not have a large number of missing entries, we compare the correlation plots before and after imputation.
+
+```{r,fig.width=10}
+ggcorr(df_variables%>%select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 1)+ggtitle("Before imputation")
+ggcorr(df_variables_imputed%>%select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 1)+ggtitle("After imputation")
+```
+With knn imputation at k=10, the variable "right" is most affected, as its correlation with other variables was decreased from the imputation process. However, for reasons below, this will not be a problem.
+
+```{r,fig.width=10}
+ggcorr(df_variables_imputed%>%select(-hapiscore_whr),geom="circle",layout.exp = 1)+ggtitle("Full correlation matrix after imputation")
+```
+
+
+Variables that are relatively independent from others:
+- gdppercapita_growth,forestcoverage,sdi,aged_15plus_unemployment_rate_percent,parliament
+
+Based on this distinction, we execute a two step process:
+First, we do a regression of the happiness score based on these independent features to determine those with a statistically significant effect on the target.
+Second, we do a PR decomposition of the remaining variables to eliminate the multicollinearity concerns, and use the PCs accounting for more than 80% of the total target variance for a PCR regression.
+Finally, we do a PCR regression using the identified PCs alongside the independent features above.
+
+
+```{r}
+lm_independent=lm(hapiscore_whr~gdppercapita_growth+forestcoverage+sdi+aged_15plus_unemployment_rate_percent+parliament,data=df_variables_imputed)
+summary(lm_independent)
+```
+Based on the model, sdi and parliament are possible independent features. We also check for multicollinearity in the model with VIF.
+
+```{r}
+car::vif(lm_independent)
+```
+```{r}
+df_variables_remaining=df_variables_imputed%>%select(-gdppercapita_growth,-forestcoverage,-sdi,-aged_15plus_unemployment_rate_percent,-parliament,-hapiscore_whr)
+pr_happiness=prcomp(df_variables_remaining,scale=T,center=T)
+```
+
+```{r}
+pr_var=pr_happiness$sdev^2
+prop_var=pr_var/sum(pr_var)
+plot(cumsum(prop_var))
+```
+We decide to use 3 PCs, which account for 80% of the total variance.
+
+```{r}
+test_pr=pr_happiness$x[,1:3]
+test_pr=cbind(test_pr,df_variables_imputed%>%select(sdi,parliament))
+test_pr['hapiscore_whr']=df_variables$hapiscore_whr
+model_pure_pcr=lm(hapiscore_whr~PC1+PC2+PC3,data=test_pr)
+model_pcr_additive=lm(hapiscore_whr~PC1+PC2+PC3+sdi+parliament,data=test_pr)
+summary(model_pcr_additive)
+```
+To see whether our independent features add any value to our PCR model, we conduct a model F-test using both. We see that the model with our independent variables does yield a better fit than the pure PCR model. However, the inclusion of the sdi variable is not necessary.
+
+```{r}
+anova(model_pure_pcr,model_pcr_additive,test="F")
+```
+```{r}
+train()
+```
+
+

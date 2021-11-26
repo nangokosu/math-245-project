@@ -39,7 +39,7 @@ full_data2$hapiscore_whr <- as.numeric(as.character(full_data2$hapiscore_whr))*1
 full_data2$internetusers <- as.numeric(full_data2$internetusers)
 full_data2$broadband<-as.numeric(full_data2$broadband)
 full_data2$militaryexpenditure<-as.numeric(full_data2$militaryexpenditure)
-full_data2$gdppercapita<-as.numeric(full_data2$gdppercapita)
+full_data2$gdppercapita_growth<-as.numeric(full_data2$gdppercapita_growth)
 
 
 # Write to RDS
