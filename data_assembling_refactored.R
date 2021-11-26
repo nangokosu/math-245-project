@@ -28,7 +28,7 @@ download_and_create_df=function(link){
 }
 final_dfs=lapply(files,download_and_create_df)
 full_data=final_dfs%>%reduce(full_join,by=c("country","year"))
-full_data2=full_data%>%filter(year==2016)
+full_data2=full_data%>%filter(year==2014)
 
 # Renaming certain columns to match original data assembling file
 full_data2$aged_15plus_employment_rate_percent <- as.numeric(as.character(full_data2$aged_15plus_employment_rate_percent))*100
@@ -37,6 +37,10 @@ full_data2$sanitation <- as.numeric(as.character(full_data2$sanitation))*100
 full_data2$parliament <- as.numeric(as.character(full_data2$parliament))*100
 full_data2$hapiscore_whr <- as.numeric(as.character(full_data2$hapiscore_whr))*100
 full_data2$internetusers <- as.numeric(full_data2$internetusers)
+full_data2$broadband<-as.numeric(full_data2$broadband)
+full_data2$militaryexpenditure<-as.numeric(full_data2$militaryexpenditure)
+full_data2$gdppercapita<-as.numeric(full_data2$gdppercapita)
+
 
 # Write to RDS
 saveRDS(full_data2,"./merged_gapminder_happiness.rds")
