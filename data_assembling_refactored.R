@@ -1,7 +1,7 @@
 library(tidyverse)
 files=c("parliament.csv",
         "hapiscore_whr.csv",
-        "aged_15plus_employment_rate_percent.csv",
+        "aged_15plus_unemployment_rate_percent.csv",
         "right.csv",
         "sanitation.csv",
         "hdiindex.csv",
@@ -15,7 +15,7 @@ files=c("parliament.csv",
         "broadband.csv",
         "agriculture.csv",
         "debt.csv",
-        "gdppercapita.csv",
+        "gdppercapita_growth.csv",
         "foodinsecurity.csv")
 download_and_create_df=function(link){
   root="https://raw.githubusercontent.com/nangokosu/math-245-project/main/data/"
@@ -31,7 +31,7 @@ full_data=final_dfs%>%reduce(full_join,by=c("country","year"))
 full_data2=full_data%>%filter(year==2014)
 
 # Renaming certain columns to match original data assembling file
-full_data2$aged_15plus_employment_rate_percent <- as.numeric(as.character(full_data2$aged_15plus_employment_rate_percent))*100
+full_data2$aged_15plus_unemployment_rate_percent <- as.numeric(as.character(full_data2$aged_15plus_unemployment_rate_percent))
 full_data2$right <- as.numeric(as.character(full_data2$right))*100
 full_data2$sanitation <- as.numeric(as.character(full_data2$sanitation))*100
 full_data2$parliament <- as.numeric(as.character(full_data2$parliament))*100
