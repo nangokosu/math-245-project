@@ -175,9 +175,9 @@ lm_model_final_cv=train(hapiscore_whr~PC1+PC2+PC3+parliament,
       trControl=trainControl(method="cv",number=10))
 ```
 
-
 ```{r}
 predictions_test=predict(lm_model_final_cv,newdata=test_pr)
+test_pr$hapiscore_whr=predictions_test
 ```
 
 ## Implementation using tree-based modeling:
