@@ -90,6 +90,18 @@ Distribution  - decreasing with outliers
 foodinsecurity: Prevalence of moderate or severe food insecurity in the population
 Distribution - normal skewed right?
 
+Exports:% of GNP: exports of goods & services, include the value of merchandise, freight, insurance, transport, travel
+Data source: https://data.worldbank.org/indicator/NE.EXP.GNFS.ZS
+
+Corruption Perception Index (CPI): Transparency International's score of perceptions of corruption. Higher value indicates less corruption.
+Data source: http://www.transparency.org/research/cpi
+
+Income: Income per person adjusted for purchasing power
+Data Source: World Bank, http:llgapm.io/dgdppc
+
+Vaccine: Proportion of people who disagree that vaccines are effective for children to have
+Data Source: http://gapm.io/dvaccine_confidence
+
 ## General observations 
 There are some variables with significant left skew i.e beyond a certain threshold, the variable will most likely not affect the target variable any more (e.g water, sanitation).
 There are some variables with significant right skew i.e below a certain threshold, the variable will most likely not affect the target variable any more (e.g debt).

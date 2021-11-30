@@ -18,14 +18,20 @@ agriculture_data <- read_csv(paste0(root,"agriculture.csv"))
 debt_data <- read_csv(paste0(root,"debt.csv"))
 gdp_data <- read_csv(paste0(root,"gdppercapita.csv"))
 food_data <- read_csv(paste0(root,"foodinsecurity.csv"))
-#Add two new quantitative variables to address concerns
+#Add new quantitative variables to address concerns
 exports_data <- read_csv("exports.csv")
 corruption_data <- read_csv("corruptiondata.csv")
+vaccine_data <- read_csv("vaccine.csv")
+income_data <- read_csv("incomeperson.csv")
 
 exports_tall <-gather(exports_data, key="year", value="exports",-country)
 exports_tall <- mutate(exports_tall, year=as.numeric(year))
 corruption_tall <-gather(corruption_data, key="year", value="corruption",-country)
 corruption_tall <- mutate(corruption_tall, year=as.numeric(year))
+vaccine_tall <-gather(vaccine_data, key="year", value="vaccine",-country)
+vaccine_tall <- mutate(vaccine_tall, year=as.numeric(year))
+income_tall <-gather(income_data, key="year", value="income",-country)
+income_tall <- mutate(income_tall, year=as.numeric(year))
 
 parliament_tall <-gather(parliament_data, key="year", value="parliament",-country)
 parliament_tall <- mutate(parliament_tall, year=as.numeric(year))
@@ -86,6 +92,8 @@ full_data <- full_join(full_data,food_tall,by=c("country","year"))
 #Add two new quantitative variables to full_data
 full_data <- full_join(full_data,exports_tall,by=c("country","year"))
 full_data <- full_join(full_data,corruption_tall,by=c("country","year"))
+full_data <- full_join(full_data,vaccine_tall,by=c("country","year"))
+full_data <- full_join(full_data,income_tall,by=c("country","year"))
 
 full_data2 <- filter(full_data, year==2016)
 
