@@ -22,6 +22,30 @@ library(ggplot2)
 ```{r}
 df=readRDS("./merged_gapminder_happiness.rds")
 df_variables=df%>%select(-country,-year)
+
+#Remove all missing values
+df1 <- subset(df, !is.na(df$parliament))
+df1 <- subset(df1, !is.na(df1$hapiscore_whr))
+df1 <- subset(df1, !is.na(df1$aged_15plus_unemployment_rate_percent))
+df1 <- subset(df1, !is.na(df1$sanitation))
+df1 <- subset(df1, !is.na(df1$right))
+df1 <- subset(df1, !is.na(df1$edu))
+df1 <- subset(df1, !is.na(df1$internetusers))
+df1 <- subset(df1, !is.na(df1$sdi))
+df1 <- subset(df1, !is.na(df1$hdiindex))
+df1 <- subset(df1, !is.na(df1$forestcoverage))
+df1 <- subset(df1, !is.na(df1$militaryexpenditure))
+df1 <- subset(df1, !is.na(df1$mortality))
+df1 <- subset(df1, !is.na(df1$wateraccess))
+df1 <- subset(df1, !is.na(df1$broadband))
+df1 <- subset(df1, !is.na(df1$agriculture))
+df1 <- subset(df1, !is.na(df1$debt))
+df1 <- subset(df1, !is.na(df1$gdppercapita_growth))
+df1 <- subset(df1, !is.na(df1$foodinsecurity))
+df1 <- subset(df1, !is.na(df1$exports))
+df1 <- subset(df1, !is.na(df1$corruption))
+df1 <- subset(df1, !is.na(df1$vaccine))
+df1 <- subset(df1, !is.na(df1$incomeperperson))
 ```
 
 
@@ -30,6 +54,17 @@ summary(df)
 for(i in colnames(df_variables)) {
   hist = hist(na.omit(df_variables[[i]]), breaks = 20, main = paste("Distribution of", i),xlab=NULL)
 }
+```
+```{r}
+for(i in colnames(df_variables)) {
+  boxplot = boxplot(na.omit(df_variables[[i]]), main = paste("Boxplot of", i),xlab=NULL)
+}
+```
+```{r}
+apply(df1[,3:24], 2, IQR)
+apply(df1[,3:24], 2, var)
+apply(df1[,3:24], 2, sd)
+cor(df1[,3:24])
 ```
 
 Description & distribution of each variable:
@@ -217,4 +252,23 @@ ggplot(data=NULL)+
 
 
 ## Implementation using Ridge regression:
-
+Given multicollinearity is an issue as indicated by VIF, tolerance level, and correlation plot in our data, we decided to use Ridge Regression to further test our data. 
+```{r}
+y <- df1$hapiscore_whr
+x <- data.matrix(df1[, 4:24])
+library(glmnet)
+model <- glmnet(x, y, alpha = 0)
+summary(model)
+cv_model <- cv.glmnet(x, y, alpha = 0)
+best_lambda <- cv_model$lambda.min
+best_lambda
+plot(cv_model) 
+best_model <- glmnet(x, y, alpha = 0, lambda = best_lambda)
+coef(best_model)
+plot(model, xvar = "lambda")
+y_predicted <- predict(model, s = best_lambda, newx = x)
+sst <- sum((y - mean(y))^2)
+sse <- sum((y_predicted - y)^2)
+rsq <- 1 - sse/sst
+rsq
+```
