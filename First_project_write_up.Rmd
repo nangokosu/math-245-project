@@ -125,6 +125,7 @@ In order to see if our knn imputation significantly affects the relationship bet
 ggcorr(df_variables%>%select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 1)+ggtitle("Before imputation")
 ggcorr(df_variables_imputed%>%select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 1)+ggtitle("After imputation")
 ```
+
 With knn imputation at k=10, the variable "right" is most affected, as its correlation with other variables was decreased from the imputation process. However, for reasons below, this will not be a problem.
 
 ```{r,fig.width=10}
@@ -176,6 +177,7 @@ To see whether our independent features add any value to our PCR model, we condu
 ```{r}
 anova(model_pure_pcr,model_pcr_additive,test="F")
 ```
+
 ```{r}
 na_criteria=is.na(df_variables_imputed$hapiscore_whr)
 train_pr=pr_pc[!na_criteria,]
@@ -192,4 +194,5 @@ predictions_test=predict(lm_model_final_cv,newdata=test_pr)
 test_pr$hapiscore_whr=predictions_test
 ```
 
-## Implementation using tree-based modeling:
+## Implementation using Ridge regression:
+
