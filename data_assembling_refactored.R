@@ -16,7 +16,11 @@ files=c("parliament.csv",
         "agriculture.csv",
         "debt.csv",
         "gdppercapita_growth.csv",
-        "foodinsecurity.csv")
+        "foodinsecurity.csv",
+        "corruption.csv",
+        "incomeperperson.csv",
+        "exports.csv",
+        "vaccine.csv")
 download_and_create_df=function(link){
   root="https://raw.githubusercontent.com/nangokosu/math-245-project/main/data/"
   df=read_csv(paste0(root,link))
