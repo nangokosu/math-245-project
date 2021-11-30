@@ -45,6 +45,9 @@ full_data2$broadband<-as.numeric(full_data2$broadband)
 full_data2$militaryexpenditure<-as.numeric(full_data2$militaryexpenditure)
 full_data2$gdppercapita_growth<-as.numeric(full_data2$gdppercapita_growth)
 
+# Dealing with income per person data:
+full_data2$incompeperperson=str_replace(str_replace(full_data2$incomeperperson, "\\.", ""),"k","00")
+full_data2$incomeperperson<-as.numeric(full_data2$incomeperperson)
 
 # Write to RDS
 saveRDS(full_data2,"./merged_gapminder_happiness.rds")
