@@ -1,6 +1,6 @@
 library(tidyverse)
-files=c("parliament.csv",
-        "hapiscore_whr.csv",
+files=c("hapiscore_whr.csv",
+        "parliament.csv",
         "aged_15plus_unemployment_rate_percent.csv",
         "right.csv",
         "sanitation.csv",
