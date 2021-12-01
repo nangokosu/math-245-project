@@ -55,19 +55,24 @@ for(i in colnames(df_variables)) {
   hist = hist(na.omit(df_variables[[i]]), breaks = 20, main = paste("Distribution of", i),xlab=NULL)
 }
 ```
+
 #Boxplot
 ```{r}
 for(i in colnames(df_variables)) {
   boxplot = boxplot(na.omit(df_variables[[i]]), main = paste("Boxplot of", i),xlab=NULL)
 }
 ```
+
 #IQR, Variance, SD, Correlation
 ```{r}
+## From Khai: this won't do because df1 only has 12 observations
 apply(df1[,3:24], 2, IQR)
 apply(df1[,3:24], 2, var)
 apply(df1[,3:24], 2, sd)
 cor(df1[,3:24])
 ```
+
+From Khai: describe the country and year variable as well.
 
 Description & distribution of each variable:
                          For each country:
@@ -146,7 +151,7 @@ There are some variables with significant right skew i.e below a certain thresho
 There are a lot of variables with substantial numbers of missing values.
 
 ## knn imputation:
-From our summary, we find that foodsecurity,vaccine and aged_15plus_unemployment_rate_percent have a high number of missing variables. However, in general, our dataset contains very few full entries (23). As such, we employ KNN imputation in order to 
+From our summary, we find that foodsecurity,vaccine and aged_15plus_unemployment_rate_percent have a high number of missing variables. However, in general, our dataset contains very few full entries (12). As such, we employ KNN imputation in order to 
 fill in the missing entries.
 
 ```{r}
@@ -174,7 +179,7 @@ From the graph above, we see that the following variables are relatively indepen
 
 Based on this distinction, we execute a two step process:
 First, we do a regression of the happiness score based on these independent features to determine those with a statistically significant effect on the target.
-Second, we do a PR decomposition of the remaining variables to eliminate the multicollinearity concerns, and use the PCs accounting for more than 80% of the total target variance for a PCR regression.
+Second, we do a PR decomposition of the remaining variables to eliminate the multicollinearity concerns, and use the PCs cumulatively accounting for more than 80% of the total target variance for a PCR regression.
 Finally, we do a PCR regression using the identified PCs alongside the independent features above.
 
 ## i 
@@ -198,7 +203,7 @@ pr_happiness=prcomp(df_variables_remaining,scale=T,center=T)
 ```{r}
 pr_var=pr_happiness$sdev^2
 prop_var=pr_var/sum(pr_var)
-plot(cumsum(prop_var))
+plot(cumsum(prop_var),xlab="Number of PCs",ylab="")
 ```
 
 We decide to use 4 PCs, which account for 80% of the total variance.
@@ -211,11 +216,12 @@ model_pure_pcr=lm(hapiscore_whr~PC1+PC2+PC3+PC4,data=pr_pc)
 model_pcr_additive=lm(hapiscore_whr~PC1+PC2+PC3+PC4+sdi+parliament,data=pr_pc)
 summary(model_pcr_additive)
 ```
-To see whether our independent features add any value to our PCR model, we conduct a model F-test using both. We see that the model with our independent variables along the PCs does not yield a better fit than the pure PCR model, so the latter is preferred. In fact, we may only need 3 PCs rather than 4.
+To see whether our independent features add any value to our PCR model, we conduct a model F-test using both. We see that the model with our independent variables along the PCs does not yield a better fit than the pure PCR model for parsimony, so the latter is preferred. In fact, we may only need 3 PCs rather than 4.
 
 ```{r}
 anova(model_pure_pcr,model_pcr_additive,test="F")
 ```
+
 ```{r,fig.width=10}
 model_3_pcr=lm(hapiscore_whr~PC1+PC2+PC3,data=pr_pc)
 par(mfrow=c(1,2))
@@ -274,3 +280,5 @@ sse <- sum((y_predicted - y)^2)
 rsq <- 1 - sse/sst
 rsq
 ```
+
+From Khai: provide commentary for your results: which variables were selected? How does this compare to my model (where only the the first three PCs are selected)? (If you want to, feel free to extract the results from the pr_decomposition for comparison. The object is pr_happiness)? What is the adjusted R_2 and AIC of my model (lm_model_final_cv) against yours?
