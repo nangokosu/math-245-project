@@ -266,19 +266,22 @@ Stepwise Regression
 3. The adjusted R-squared for this model is 0.7663, which means that our model reasonally well captures 76.63% of the variability in the data. The RMSE of the model is 5.340318. The AIC of the model is 1465.618. 
 
 ```{r}
-res.lm <- lm(hapiscore_whr ~., data = df_variables_imputed)
+df_variables_full=df_variables_imputed%>%filter(!is.na(hapiscore_whr))
+train.control <- trainControl(method = "cv", number = 10)
+res.lm <- lm(hapiscore_whr ~., data = df_variables_full)
 step <- stepAIC(res.lm, direction = "both", trace = FALSE)
-step
+#step
 # Train the model
-step.model <- train(hapiscore_whr ~., data = df_variables_imputed,
+set.seed(123)
+step.model <- train(hapiscore_whr ~., data = df_variables_full,
                     method = "lmStepAIC", 
                     trControl = train.control,
                     trace = FALSE
                     )
 # Model accuracy
-step.model$results
+#step.model$results
 # Final model coefficients
-step.model$finalModel
+#step.model$finalModel
 # Summary of the model
 summary(step.model$finalModel)
 ```
