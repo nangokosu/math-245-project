@@ -304,7 +304,7 @@ step.model1$results
 step.model1$bestTune
 summary(step.model1$finalModel)
 model.lm2 <- lm(hapiscore_whr~aged_15plus_unemployment_rate_percent+hdiindex+foodinsecurity+vaccine+incomeperperson, data=df_variables_full)
-#summary(model.lm2)
-#AIC_calculated <- 2*7 + 241* (log( 2*3.14* (1-0.759)*24962/241 ) + 1)
-#AIC_calculated
+summary(model.lm2)
+AIC_calculated <- 2*7 + 241* (log( 2*3.14* (1-0.759)*24962/241 ) + 1)
+AIC_calculated
 ```
