@@ -22,30 +22,6 @@ library(ggplot2)
 ```{r}
 df=readRDS("./merged_gapminder_happiness.rds")
 df_variables=df%>%select(-country,-year)
-
-#Remove all missing values
-df1 <- subset(df, !is.na(df$parliament))
-df1 <- subset(df1, !is.na(df1$hapiscore_whr))
-df1 <- subset(df1, !is.na(df1$aged_15plus_unemployment_rate_percent))
-df1 <- subset(df1, !is.na(df1$sanitation))
-df1 <- subset(df1, !is.na(df1$right))
-df1 <- subset(df1, !is.na(df1$edu))
-df1 <- subset(df1, !is.na(df1$internetusers))
-df1 <- subset(df1, !is.na(df1$sdi))
-df1 <- subset(df1, !is.na(df1$hdiindex))
-df1 <- subset(df1, !is.na(df1$forestcoverage))
-df1 <- subset(df1, !is.na(df1$militaryexpenditure))
-df1 <- subset(df1, !is.na(df1$mortality))
-df1 <- subset(df1, !is.na(df1$wateraccess))
-df1 <- subset(df1, !is.na(df1$broadband))
-df1 <- subset(df1, !is.na(df1$agriculture))
-df1 <- subset(df1, !is.na(df1$debt))
-df1 <- subset(df1, !is.na(df1$gdppercapita_growth))
-df1 <- subset(df1, !is.na(df1$foodinsecurity))
-df1 <- subset(df1, !is.na(df1$exports))
-df1 <- subset(df1, !is.na(df1$corruption))
-df1 <- subset(df1, !is.na(df1$vaccine))
-df1 <- subset(df1, !is.na(df1$incomeperperson))
 ```
 
 #Histogram
@@ -65,17 +41,18 @@ for(i in colnames(df_variables)) {
 
 #IQR, Variance, SD, Correlation
 ```{r}
-## From Khai: this won't do because df1 only has 12 observations
-apply(df1[,3:24], 2, IQR)
-apply(df1[,3:24], 2, var)
-apply(df1[,3:24], 2, sd)
-cor(df1[,3:24])
+apply(na.omit(df_variables), 2, IQR)
+apply(na.omit(df_variables), 2, var)
+apply(na.omit(df_variables), 2, sd)
+cor(na.omit(df_variables))
 ```
 
-From Khai: describe the country and year variable as well.
 
 Description & distribution of each variable:
-                         For each country:
+country: The country variable includes 241 observations, including Australia, United States, Canada, Japan, Virgin Islands, Taiwan, Hong Kong and Macau. 
+year: The year variable represents our selected year. In this case, we selected 2014, the most recent year with sufficient level of data across all 21 predictor variables for our regression analysis. 
+
+For each country:
 parliament: Percentage of national parliamentary seats held by women. Lower and upper houses combined.
 Distribution - skewed right, normal.
 
@@ -125,13 +102,13 @@ agriculture: Percentage of land area that is arable
 Distribution - wide-ranging
 
 debt: Total debt service (% of GNI)
-Distribution - Sharp decrease then flat?
+Distribution - Sharp decrease then flat
 
 gdppercapita: GDP per capita
 Distribution  - decreasing with outliers
 
 foodinsecurity: Prevalence of moderate or severe food insecurity in the population
-Distribution - normal skewed right?
+Distribution - normal skewed right
 
 Exports:% of GNP: exports of goods & services, include the value of merchandise, freight, insurance, transport, travel
 Data source: https://data.worldbank.org/indicator/NE.EXP.GNFS.ZS
@@ -260,25 +237,52 @@ ggplot(data=NULL)+
 
 
 ## Implementation using Ridge regression:
-Given multicollinearity is an issue as indicated by VIF, tolerance level, and correlation plot in our data, we decided to use Ridge Regression to further test our data. 
+Stepwise Regression
+1. Stepwise regression allows us to choose the best model by AIC (Akaike Information Criterion), which measures how weel a model fits the data it was generated from. AIC is calculated from the number of independent variables used to build the model, and the maximum likelihood estimate of the model. The best-fit model according to AIC is the one that is able to explain the greatest amount of variation using the fewest possible independent variables, and in statistical comparison, the smaller the AIC, the better the model fit. 
+2. Stepwise AIC method, therefore, gives us the model with the smallest AIC, which consists of 10 indicators, respectively foodinsecurity, unemployment rate, sanitation rate, HDI, miltary expenditure (% of GDP), debt (% of GDP), corruption, income per person, exports, and vaccine. In this model, all 10 indicators are statistically significant, with foodinsecurity, unemployment rate and hdi statistically significant at the 0.1% level. 
+3. The adjusted R-squared for this model is 0.7663, with which means that our model reasonally well captures 76.63% of the variability in the data. The RMSE of the model is 5.340318. The AIC of the model is 1465.618. 
 ```{r}
-y <- df1$hapiscore_whr
-x <- data.matrix(df1[, 4:24])
-library(glmnet)
-model <- glmnet(x, y, alpha = 0)
-summary(model)
-cv_model <- cv.glmnet(x, y, alpha = 0)
-best_lambda <- cv_model$lambda.min
-best_lambda
-plot(cv_model) 
-best_model <- glmnet(x, y, alpha = 0, lambda = best_lambda)
-coef(best_model)
-plot(model, xvar = "lambda")
-y_predicted <- predict(model, s = best_lambda, newx = x)
-sst <- sum((y - mean(y))^2)
-sse <- sum((y_predicted - y)^2)
-rsq <- 1 - sse/sst
-rsq
+library(MASS)
+res.lm <- lm(hapiscore_whr ~., data = df_variables_imputed)
+step <- stepAIC(res.lm, direction = "both", trace = FALSE)
+step
+# Train the model
+step.model <- train(hapiscore_whr ~., data = df_variables_imputed,
+                    method = "lmStepAIC", 
+                    trControl = train.control,
+                    trace = FALSE
+                    )
+# Model accuracy
+step.model$results
+# Final model coefficients
+step.model$finalModel
+# Summary of the model
+summary(step.model$finalModel)
 ```
 
-From Khai: provide commentary for your results: which variables were selected? How does this compare to my model (where only the the first three PCs are selected)? (If you want to, feel free to extract the results from the pr_decomposition for comparison. The object is pr_happiness)? What is the adjusted R_2 and AIC of my model (lm_model_final_cv) against yours?
+Given that our model includes 21 predictor variables, we use nvmax from 1 to 21 to identify the best models. 
+1. We also use 1-fold cross-validation to estimate the average prediction error of each of the 5 models, and the RMSE metric allows us to directly compare the models and select the best model that minimize RMSE. 
+2. Using the best tuning values, we are able to find that the model with 5 variables (respectively unemployment rate, hdi, foodinsecurity, vaccine, and income per person) is the one that has the lowest RMSE. 
+3. The resulting regression shows that all five predictor variables are statistcially significant, and in fact, four out of five predictor variables included are significant at the 0.1% level. The Adjusted R-squared value is 0.7539. Even though the adjusted R-squared value is comparatively lower than the above-mentioned StepAIC model, this new model gives us the lowest RMSE of 5.042854 in all linear models. The AIC of the model is 1473.189. 
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+step.model1 <- train(hapiscore_whr ~parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+hdiindex+forestcoverage+
+                       militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+
+                       exports+corruption+vaccine+incomeperperson, data = df_variables_imputed,
+                    method = "leapBackward", 
+                    tuneGrid = data.frame(nvmax = 1:21),
+                    trControl = train.control
+                    )
+step.model1$results
+step.model1$bestTune
+summary(step.model1$finalModel)
+coef(step.model1$finalModel, 5)
+model.lm2 <- lm(hapiscore_whr~aged_15plus_unemployment_rate_percent+hdiindex+foodinsecurity+vaccine+incomeperperson, data=df_variables_imputed)
+summary(model.lm2)
+AIC_calculated <- 2*7 + 241* (log( 2*3.14* (1-0.759)*24962/241 ) + 1)
+AIC_calculated
+```
