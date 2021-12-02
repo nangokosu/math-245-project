@@ -308,3 +308,54 @@ summary(model.lm2)
 AIC_calculated <- 2*7 + 241* (log( 2*3.14* (1-0.759)*24962/241 ) + 1)
 AIC_calculated
 ```
+###NEW!!!
+Stepwise Regression
+1. Stepwise regression allows us to choose the best model by AIC (Akaike Information Criterion), which measures how weel a model fits the data it was generated from. AIC is calculated from the number of independent variables used to build the model, and the maximum likelihood estimate of the model. The best-fit model according to AIC is the one that is able to explain the greatest amount of variation using the fewest possible independent variables, and in statistical comparison, the smaller the AIC, the better the model fit. 
+2. Stepwise AIC method, therefore, gives us the model with the smallest AIC, which consists of 10 indicators, respectively foodinsecurity, unemployment rate, sanitation rate, HDI, miltary expenditure (% of GDP), debt (% of GDP), corruption, income per person, exports, and vaccine. In this model, all 10 indicators are statistically significant, with foodinsecurity, unemployment rate and hdi statistically significant at the 0.1% level. 
+3. The adjusted R-squared for this model is 0.7663, which means that our model reasonally well captures 76.63% of the variability in the data. 
+```{r}
+library(MASS)
+res.lm <- lm(hapiscore_whr ~., data = df_variables_imputed)
+step <- stepAIC(res.lm, direction = "both", trace = FALSE)
+step
+# Train the model
+step.model <- train(hapiscore_whr ~., data = df_variables_imputed,
+                    method = "lmStepAIC", 
+                    trControl = train.control,
+                    trace = FALSE
+                    )
+# Model accuracy
+step.model$results
+# Final model coefficients
+step.model$finalModel
+# Summary of the model
+summary(step.model$finalModel)
+AIC(step.model$finalModel)
+```
+Given that our model includes 21 predictor variables, we use nvmax from 1 to 21 to identify the best models. 
+1. We also use 1-fold cross-validation to estimate the average prediction error of each of the 5 models, and the RMSE metric allows us to directly compare the models and select the best model that minimize RMSE. 
+2. Using the best tuning values, we are able to find that the model with 5 variables (respectively unemployment rate, hdi, foodinsecurity, vaccine, and income per person) is the one that has the lowest RMSE. 
+3. The resulting regression shows that all five predictor variables are statistcially significant, and in fact, four out of five predictor variables included are significant at the 0.1% level. The Adjusted R-squared value is 0.7539. Even though the adjusted R-squared value is comparatively lower than the above-mentioned StepAIC model, this new model gives us the lowest RMSE of 5.042854 in all linear models, and the AIC is 1473.189.
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+step.model1 <- train(hapiscore_whr ~parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+hdiindex+forestcoverage+
+                       militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+
+                       exports+corruption+vaccine+incomeperperson, data = df_variables_imputed,
+                    method = "leapBackward", 
+                    tuneGrid = data.frame(nvmax = 1:21),
+                    trControl = train.control
+                    )
+step.model1$results
+step.model1$bestTune
+summary(step.model1$finalModel)
+coef(step.model1$finalModel, 5)
+model.lm2 <- lm(hapiscore_whr~aged_15plus_unemployment_rate_percent+hdiindex+foodinsecurity+vaccine+incomeperperson, data=df_variables_imputed)
+summary(model.lm2)
+anova(model.lm2)
+AIC_calculated <- 2*7 + 241* (log( 2*3.14* (1-0.759)*24962/241 ) + 1)
+AIC_calculated
+```
