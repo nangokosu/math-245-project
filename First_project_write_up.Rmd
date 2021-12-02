@@ -16,12 +16,14 @@ Our project seeks to use a variety of Gapminder country level statistics from 20
 library(tidyverse)
 library(GGally)
 library(ggplot2)
+library(caret)
+library(MASS)
 ```
 
 
 ```{r}
 df=readRDS("./merged_gapminder_happiness.rds")
-df_variables=df%>%select(-country,-year)
+df_variables=df%>%dplyr::select(-country,-year)
 ```
 
 #Histogram
@@ -154,7 +156,7 @@ fill in the missing entries.
 
 ```{r}
 library(VIM)
-df_variables_imputed=kNN(df_variables%>%select(-hapiscore_whr),k=10,imp_var=F)
+df_variables_imputed=kNN(df_variables%>%dplyr::select(-hapiscore_whr),k=10,imp_var=F)
 df_variables_imputed['hapiscore_whr']=df_variables$hapiscore_whr
 ```
 
@@ -163,14 +165,14 @@ df_variables_imputed['hapiscore_whr']=df_variables$hapiscore_whr
 In order to see if our knn imputation significantly affects the relationship between variables that did not have a large number of missing entries, we compare the correlation plots before and after imputation.
 
 ```{r,fig.width=10}
-ggcorr(df_variables%>%select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 1)+ggtitle("Before imputation")
-ggcorr(df_variables_imputed%>%select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 1)+ggtitle("After imputation")
+ggcorr(df_variables%>%dplyr::select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 1)+ggtitle("Before imputation")
+ggcorr(df_variables_imputed%>%dplyr::select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 1)+ggtitle("After imputation")
 ```
 
 With knn imputation at k=10, the variable "right" is most affected, as its correlation with other variables was decreased from the imputation process. However, for reasons below, this will not be a problem.
 
 ```{r,fig.width=10}
-ggcorr(df_variables_imputed%>%select(-hapiscore_whr),geom="circle",layout.exp = 1)+ggtitle("Full correlation matrix after imputation")
+ggcorr(df_variables_imputed%>%dplyr::select(-hapiscore_whr),geom="circle",layout.exp = 1)+ggtitle("Full correlation matrix after imputation")
 ```
 
 From the graph above, we see that the following variables are relatively independent from others: gdppercapita_growth,forestcoverage,sdi,aged_15plus_unemployment_rate_percent,parliament,vaccine.
@@ -194,7 +196,7 @@ car::vif(lm_independent)
 ## ii
 
 ```{r}
-df_variables_remaining=df_variables_imputed%>%select(-gdppercapita_growth,-forestcoverage,-sdi,-aged_15plus_unemployment_rate_percent,-parliament,-hapiscore_whr,-vaccine)
+df_variables_remaining=df_variables_imputed%>%dplyr::select(-gdppercapita_growth,-forestcoverage,-sdi,-aged_15plus_unemployment_rate_percent,-parliament,-hapiscore_whr,-vaccine)
 pr_happiness=prcomp(df_variables_remaining,scale=T,center=T)
 ```
 
@@ -208,7 +210,7 @@ We decide to use 4 PCs, which account for 80% of the total variance.
 
 ```{r}
 pr_pc=pr_happiness$x[,1:4]
-pr_pc=cbind(pr_pc,df_variables_imputed%>%select(sdi,parliament))
+pr_pc=cbind(pr_pc,df_variables_imputed%>%dplyr::select(sdi,parliament))
 pr_pc['hapiscore_whr']=df_variables$hapiscore_whr
 model_pure_pcr=lm(hapiscore_whr~PC1+PC2+PC3+PC4,data=pr_pc)
 model_pcr_additive=lm(hapiscore_whr~PC1+PC2+PC3+PC4+sdi+parliament,data=pr_pc)
@@ -262,8 +264,8 @@ Stepwise Regression
 1. Stepwise regression allows us to choose the best model by AIC (Akaike Information Criterion), which measures how well a model fits the data that it was generated from. AIC is calculated based on the number of independent variables used to build the model, and the maximum likelihood estimate of the model. The best-fit model according to AIC is the one that is able to explain the greatest amount of variation using the fewest possible independent variables, and in statistical comparison, the smaller the AIC, the better the model fit. 
 2. Stepwise AIC method, therefore, gives us the model with the smallest AIC, which in this case consists of 10 indicators, respectively foodinsecurity, unemployment rate, sanitation rate, HDI, miltary expenditure (% of GDP), debt (% of GDP), corruption, income per person, exports, and vaccine. In fitting this model, all 10 indicators are statistically significant, with foodinsecurity, unemployment rate and hdi statistically significant at the 0.1% level. 
 3. The adjusted R-squared for this model is 0.7663, which means that our model reasonally well captures 76.63% of the variability in the data. The RMSE of the model is 5.340318. The AIC of the model is 1465.618. 
+
 ```{r}
-library(MASS)
 res.lm <- lm(hapiscore_whr ~., data = df_variables_imputed)
 step <- stepAIC(res.lm, direction = "both", trace = FALSE)
 step
