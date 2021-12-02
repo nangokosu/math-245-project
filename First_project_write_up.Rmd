@@ -26,27 +26,19 @@ df=readRDS("./merged_gapminder_happiness.rds")
 df_variables=df%>%dplyr::select(-country,-year)
 ```
 
-#Histogram
+#EDA
 ```{r}
-summary(df)
+summary(df_variables)
+par(mfrow=c(4,5))
 for(i in colnames(df_variables)) {
   hist = hist(na.omit(df_variables[[i]]), breaks = 20, main = paste("Distribution of", i),xlab=NULL)
 }
-```
-
-#Boxplot
-```{r}
 for(i in colnames(df_variables)) {
   boxplot = boxplot(na.omit(df_variables[[i]]), main = paste("Boxplot of", i),xlab=NULL)
 }
-```
-
-#IQR, Variance, SD, Correlation
-```{r}
-apply(na.omit(df_variables), 2, IQR)
-apply(na.omit(df_variables), 2, var)
-apply(na.omit(df_variables), 2, sd)
-cor(na.omit(df_variables))
+hist(na.omit(df_variables$hapiscore_whr))
+boxplot(na.omit(df_variables$hapiscore_whr))
+sd(na.omit(df_variables$hapiscore_whr))
 ```
 
 Description & distribution of each variable:
