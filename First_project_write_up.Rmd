@@ -236,7 +236,7 @@ ggplot(data=NULL)+
 ```
 
 
-## Implementation using Ridge regression:
+## Implementation using Stepwise regression (StepAIC & cross-validation):
 Stepwise Regression
 1. Stepwise regression allows us to choose the best model by AIC (Akaike Information Criterion), which measures how weel a model fits the data it was generated from. AIC is calculated from the number of independent variables used to build the model, and the maximum likelihood estimate of the model. The best-fit model according to AIC is the one that is able to explain the greatest amount of variation using the fewest possible independent variables, and in statistical comparison, the smaller the AIC, the better the model fit. 
 2. Stepwise AIC method, therefore, gives us the model with the smallest AIC, which consists of 10 indicators, respectively foodinsecurity, unemployment rate, sanitation rate, HDI, miltary expenditure (% of GDP), debt (% of GDP), corruption, income per person, exports, and vaccine. In this model, all 10 indicators are statistically significant, with foodinsecurity, unemployment rate and hdi statistically significant at the 0.1% level. 
