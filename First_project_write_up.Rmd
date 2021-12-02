@@ -282,7 +282,7 @@ summary(step.model$finalModel)
 ```
 
 Given that our model includes 21 predictor variables, we use nvmax from 1 to 21 to identify the best models. 
-1. We also use 1-fold cross-validation to estimate the average prediction error of each of the 5 models, and the RMSE metric allows us to directly compare the models and select the best model that minimize RMSE. 
+1. We also use 10-fold cross-validation to estimate the average prediction error of each of the 5 models, and the RMSE metric allows us to directly compare the models and select the best model that minimize RMSE. 
 2. Using the best tuning values, we are able to find that the model with 5 variables (respectively unemployment rate, hdi, foodinsecurity, vaccine, and income per person) is the one that has the lowest RMSE. 
 3. The resulting regression shows that all five predictor variables are statistcially significant, and in fact, four out of five predictor variables included are significant at the 0.1% level. The Adjusted R-squared value is 0.7539. Even though the adjusted R-squared value is comparatively lower than the above-mentioned StepAIC model, this new model gives us the lowest RMSE of 5.042854 in all linear models. The AIC of the model is 1473.189. 
 ```{r}
