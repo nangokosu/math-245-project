@@ -26,6 +26,7 @@ df=readRDS("./merged_gapminder_happiness.rds")
 df_variables=df%>%dplyr::select(-country,-year)
 ```
 
+#EDA
 ```{r}
 summary(df_variables)
 par(mfrow=c(4,5))
