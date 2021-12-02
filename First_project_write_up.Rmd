@@ -47,80 +47,101 @@ apply(na.omit(df_variables), 2, sd)
 cor(na.omit(df_variables))
 ```
 
-
 Description & distribution of each variable:
-country: The country variable includes 241 observations, including Australia, United States, Canada, Japan, Virgin Islands, Taiwan, Hong Kong and Macau. 
-year: The year variable represents our selected year. In this case, we selected 2014, the most recent year with sufficient level of data across all 21 predictor variables for our regression analysis. 
+                         
+country: The country variable includes 241 observations, including Australia, United States, Canada, Japan, and Virgin Islands, Taiwan, Hong Kong, and Macau. 
+year: The year variable is 2014, which is the most recent year with sufficient level of data for our regression analysis. 
 
-For each country:
+For each country
 parliament: Percentage of national parliamentary seats held by women. Lower and upper houses combined.
 Distribution - skewed right, normal.
 
 hapiscore_whr: This is the national average response to the question of life evaluations asking the following “Please imagine a ladder, with steps numbered from 0 at the bottom to 10 at the top. The top of the ladder represents the best possible life for you and the bottom of the ladder represents the worst possible life for you. On which step of the ladder would you say you personally feel you stand at this time?” This measure is also referred to as Cantril life ladder. Gapminder has converted this indicator's scale from 0 to 100 to easily communicate it in terms of percentage.
 Distribution - mild hump/stretched-out normal curve with wide spread
+IQR: 9.52500, variance: 6.312879e+01, standard deviation: 7.945363e+00
 
 aged_15plus_unemployment_rate_percent: Percentage of total population, age group above 15, that has been registered as unemployed during the given year.
 Distribution - normal
+IQR: 11.77500, variance: 8.424851e+01, standard deviation: 9.178698e+00
 
 right: Fundamental Rights in the form of liberal and social rights support both fair representation and the vertical 
 mechanism of accountability that the first attribute seeks to achieve. This attribute is composed of three 
 subattributes: access to justice, civil liberties, and social rights and equality. The three subattributes were 
 aggregated into the Fundamental Rights index using BFA (source: Skaning 2019 via https://www.idea.int/gsod-indices/sites/default/files/idea-gsodi-2019-codebook-v3.pdf )
 Distribution: normal/hump, wide spread
+IQR: 6.95000, variance: 7.135659e+01, standard deviation: 8.447283e+00
 
 sanitation: percentage of people using improved sanitation facilities that are not shared with other households.
 distribution - uniform/linear then with sharp jump/exponential increase at 100%.
+IQR:  22.82500, variance: 1.784627e+02, standard deviation: 1.335899e+01
 
 hdiindex: Human Development Index (HDI) https://www.hdr.undp.org/en/content/human-development-index-hdi
 distribution - concave down increasing, wide spread.
+IQR: 0.02125, variance: 9.375379e-04, standard deviation: 3.061924e-02
 
 edu: Education index calculated based on Avg years of schooling, taking values 0 as minimum and 15 as maximum
 Distribution - wide spread.
+IQR: 12.12500, variance: 8.859174e+01, standard deviation: 9.412319e+00
 
 internetusers: Percentage of Population with stable Internet access
 Distribution - multimodal, wide spread.
+IQR: 19.22500, variance: 2.372645e+02, standard deviation: 1.540339e+01
 
 sdi: The Sustainable Development Index is an efficiency metric, designed to assess the ecological efficiency of nations in delivering human development. It is calculated as the quotient of two figures: (1) a “development index” based on the Human Development Index, calculated as the geometric mean of the life expectancy index, the education index, and a modified income index; and (2) an “ecological impact index” calculated as the extent to which consumption-based CO2 emissions and material footprint exceed per-capita shares of planetary boundaries.
 Distribution - seemingly linearly increasing, or skewed left.
+IQR: 5.17500, variance: 1.093839e+02, standard deviation: 1.045867e+01
 
 forestcoverage: Percentage of total land area that has been covered with forest
 Distribution - Seemingly decreasing.
+IQR: 18.10500, variance: 3.058635e+02, standard deviation: 1.748895e+01
 
 militaryexpenditure: Military expenditure as a percentage of GDP.
 Distribution - Right skewed normal with outliers at larger values. 
+IQR: 0.78975, variance: 2.334034e+00, standard deviation: 1.527755e+00
 
 mortality: Newborn mortality rate per 1000
 Distribution - decreasing
+IQR: 6.22500, variance: 1.591720e+01, standard deviation: 3.989636e+00
 
 wateraccess: Percentage of people with at least basic water services
 Distribution - exponentially increasing.
+IQR: 7.25000, variance: 2.993909e+01, standard deviation: 5.471663e+00
 
 broadband: Broadband subscribers per 100 people
 Distribution - steep drop/potentially exponentially decreasing.
+IQR: 9.98500, variance: 4.516839e+01, standard deviation: 6.720743e+00
 
 agriculture: Percentage of land area that is arable
 Distribution - wide-ranging
+IQR: 13.02500, variance: 2.622336e+02, standard deviation: 1.619363e+01
 
 debt: Total debt service (% of GNI)
 Distribution - Sharp decrease then flat
+IQR: 6.64000, variance: 3.385360e+01, standard deviation: 5.818385e+00
 
-gdppercapita: GDP per capita
+gdppercapita_growth: GDP per capita
 Distribution  - decreasing with outliers
+IQR: 2.13000, variance: 2.543614e+00, standard deviation: 1.594871e+00
 
 foodinsecurity: Prevalence of moderate or severe food insecurity in the population
 Distribution - normal skewed right
+IQR: 9.55000, variance: 1.128336e+02, standard deviation: 1.062232e+01
 
 Exports:% of GNP: exports of goods & services, include the value of merchandise, freight, insurance, transport, travel
 Data source: https://data.worldbank.org/indicator/NE.EXP.GNFS.ZS
+IQR: 20.17500, variance: 2.426063e+02, standard deviation: 1.557582e+01
 
 Corruption Perception Index (CPI): Transparency International's score of perceptions of corruption. Higher value indicates less corruption.
 Data source: http://www.transparency.org/research/cpi
+IQR: 3.25000, variance: 8.818182e+00, standard deviation: 2.969542e+00
 
 Income: Income per person adjusted for purchasing power
 Data Source: World Bank, http:llgapm.io/dgdppc
+IQR: 5350.00000, variance: 2.689152e+07, standard deviation: 5.185703e+03
 
 Vaccine: Proportion of people who disagree that vaccines are effective for children to have
 Data Source: http://gapm.io/dvaccine_confidence
+IQR: 5.47500, variance: 3.927970e+01, standard deviation: 6.267352e+00
 
 ## General observations 
 There are some variables with significant left skew i.e beyond a certain threshold, the variable will most likely not affect the target variable any more (e.g water, sanitation).
