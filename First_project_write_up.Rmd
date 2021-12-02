@@ -294,7 +294,9 @@ Given that our model includes 21 predictor variables, we use nvmax from 1 to 21 
 set.seed(123)
 # Set up repeated k-fold cross-validation
 #Train the model
-step.model1 <- train(hapiscore_whr ~., data = df_variables_full,
+step.model1 <- train(hapiscore_whr ~parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+hdiindex+forestcoverage+
+                       militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+
+                       exports+corruption+vaccine+incomeperperson, data = df_variables_full,
                     method = "leapBackward",
                     trControl = train.control,
                     tuneGrid = data.frame(nvmax = 1:21))
