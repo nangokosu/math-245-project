@@ -2,7 +2,11 @@
 title: "Project proposal"
 output:
   html_document:
-    df_print: paged
+     toc: true
+     toc_depth: 3
+     toc_float:
+       collapsed: true
+       smooth_scroll: false
 ---
 
 ```{r setup,include=F}
@@ -261,7 +265,7 @@ ggplot(data=NULL)+
 ```
 
 
-## Stepwise regression (StepAIC with 10-fold cross-validation):
+## Stepwise regression with 10-fold cross-validation:
 
 Stepwise regression allows us to choose the best model by AIC (Akaike Information Criterion), which measures how well a model fits the data that it was generated from. AIC is calculated based on the number of independent variables used to build the model, and the maximum likelihood estimate of the model. The best-fit model according to AIC is the one that is able to explain the greatest amount of variation using the fewest possible independent variables, and in statistical comparison, the smaller the AIC, the better the model fit. It effectively acts as a form of dimensionality reduction. Here, we combine it with 10-fold cross validation.
 
@@ -284,7 +288,7 @@ summary(step.model$finalModel)
 
 The adjusted R-squared for this model is 0.7408, which means that our model reasonally well captures 74.08% of the variability in the data. The RMSE of the model is 5.340318. The AIC of the model is 1465.618. 
 
-
+## Backward selection regression with 10-fold cross-validation:
 
 Given that our model includes 21 predictor variables, we use nvmax from 1 to 21 to identify the best models. 
 1. We also use 10-fold cross-validation to estimate the average prediction error of each of the models, and this metric allows us to directly compare the models and select the best model that minimize RMSE. 
@@ -300,11 +304,20 @@ step.model1 <- train(hapiscore_whr ~parliament+aged_15plus_unemployment_rate_per
                     method = "leapBackward",
                     trControl = train.control,
                     tuneGrid = data.frame(nvmax = 1:21))
-step.model1$results
+#step.model1$results
 step.model1$bestTune
-summary(step.model1$finalModel)
+#summary(step.model1$finalModel)
 model.lm2 <- lm(hapiscore_whr~aged_15plus_unemployment_rate_percent+hdiindex+foodinsecurity+vaccine+incomeperperson, data=df_variables_full)
-#summary(model.lm2)
-#AIC_calculated <- 2*7 + 241* (log( 2*3.14* (1-0.759)*24962/241 ) + 1)
-#AIC_calculated
+summary(model.lm2)
+AIC(model.lm2)
+AIC_calculated <- 2*7 + 241* (log( 2*3.14* (1-0.759)*24962/241 ) + 1)
+AIC_calculated
 ```
+
+## Model comparisons:
+```{r}
+model_name=c("CV 3 PCR","CV StepAIC")
+aic_values=c(AIC(lm_model_final_cv),AIC(step.model$finalModel))
+data.frame(model_name=c("CV 3 PCR","CV StepAIC"))
+```
+
