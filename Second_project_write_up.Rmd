@@ -1,0 +1,339 @@
+---
+title: "In the pursuit of happiness"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 4
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+---
+
+```{r setup,include=F}
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE,message=FALSE,fig.width=10)
+```
+
+## Introduction
+
+Our project today is to determine what socio-economic variables have statistically significant effects on a country's level of happiness. We intend to do this through different types of regression models, applied to a dataset of 241 countries in 2014.
+
+```{r,echo=F,include=F}
+library(tidyverse)
+library(GGally)
+library(ggplot2)
+library(caret)
+library(MASS)
+```
+
+
+```{r}
+df=readRDS("./merged_gapminder_happiness.rds")
+df_variables=df%>%dplyr::select(-country,-year)
+```
+
+## Exploratory Data Analysis
+#### Target variable
+```{r,echo=F}
+par(mfrow=c(1,2))
+hist(na.omit(df_variables$hapiscore_whr),main="Histogram of happiness score",xlab="Happiness score")
+boxplot(na.omit(df_variables$hapiscore_whr),main="Boxplot of happiness score",ylab="Hapiness score")
+summary(na.omit(df_variables$hapiscore_whr))
+```
+
+hapiscore_whr: This is the national average response to the question of life evaluations asking the following “Please imagine a ladder, with steps numbered from 0 at the bottom to 10 at the top. The top of the ladder represents the best possible life for you and the bottom of the ladder represents the worst possible life for you. On which step of the ladder would you say you personally feel you stand at this time?” This measure is also referred to as Cantril life ladder. Gapminder has converted this indicator's scale from 0 to 100.\
+Distribution - mild hump/stretched-out normal curve with wide spread\
+IQR: 9.52500, variance: 6.312879e+01, standard deviation: 7.945363e+00
+
+#### Independent variables
+```{r,fig.width=10,fig.height=12,echo=F}
+par(mfrow=c(4,6))
+for(i in colnames(df_variables)) {
+  hist = boxplot(na.omit(df_variables[[i]]), breaks = 20, main = paste("Distribution of", i),xlab=NULL)
+}
+```
+
+parliament: Percentage of national parliamentary seats held by women. Lower and upper houses combined.\
+Distribution - skewed right, normal.
+
+aged_15plus_unemployment_rate_percent: Percentage of total population, age group above 15, that has been registered as unemployed during the given year.\
+Distribution - normal\
+IQR: 11.77500, variance: 8.424851e+01, standard deviation: 9.178698e+00
+
+right: Fundamental Rights in the form of liberal and social rights support both fair representation and the vertical 
+mechanism of accountability that the first attribute seeks to achieve. This attribute is composed of three 
+subattributes: access to justice, civil liberties, and social rights and equality. The three subattributes were 
+aggregated into the Fundamental Rights index using [BFA](https://www.idea.int/gsod-indices/sites/default/files/idea-gsodi-2019-codebook-v3.pdf)\
+Distribution: normal/hump, wide spread\
+IQR: 6.95000, variance: 7.135659e+01, standard deviation: 8.447283e+00
+
+sanitation: percentage of people using improved sanitation facilities that are not shared with other households.\
+distribution - uniform/linear then with sharp jump/exponential increase at 100%.\
+IQR:  22.82500, variance: 1.784627e+02, standard deviation: 1.335899e+01
+
+hdiindex: [Human Development Index (HDI)](https://www.hdr.undp.org/en/content/human-development-index-hdi)\
+distribution - concave down increasing, wide spread.\
+IQR: 0.02125, variance: 9.375379e-04, standard deviation: 3.061924e-02\
+
+edu: Education index calculated based on Avg years of schooling, taking values 0 as minimum and 15 as maximum\
+Distribution - wide spread.\
+IQR: 12.12500, variance: 8.859174e+01, standard deviation: 9.412319e+00
+
+internetusers: Percentage of Population with stable Internet access\
+Distribution - multimodal, wide spread.\
+IQR: 19.22500, variance: 2.372645e+02, standard deviation: 1.540339e+01
+
+sdi: The Sustainable Development Index is an efficiency metric, designed to assess the ecological efficiency of nations in delivering human development. It is calculated as the quotient of two figures: (1) a “development index” based on the Human Development Index, calculated as the geometric mean of the life expectancy index, the education index, and a modified income index; and (2) an “ecological impact index” calculated as the extent to which consumption-based CO2 emissions and material footprint exceed per-capita shares of planetary boundaries.\
+Distribution - seemingly linearly increasing, or skewed left.\
+IQR: 5.17500, variance: 1.093839e+02, standard deviation: 1.045867e+01
+
+forestcoverage: Percentage of total land area that has been covered with forest\
+Distribution - Seemingly decreasing.\
+IQR: 18.10500, variance: 3.058635e+02, standard deviation: 1.748895e+01
+
+militaryexpenditure: Military expenditure as a percentage of GDP.\
+Distribution - Right skewed normal with outliers at larger values.\
+IQR: 0.78975, variance: 2.334034e+00, standard deviation: 1.527755e+00
+
+mortality: Newborn mortality rate per 1000\
+Distribution - decreasing\
+IQR: 6.22500, variance: 1.591720e+01, standard deviation: 3.989636e+00
+
+wateraccess: Percentage of people with at least basic water services\
+Distribution - exponentially increasing.\
+IQR: 7.25000, variance: 2.993909e+01, standard deviation: 5.471663e+00
+
+broadband: Broadband subscribers per 100 people\
+Distribution - steep drop/potentially exponentially decreasing.\
+IQR: 9.98500, variance: 4.516839e+01, standard deviation: 6.720743e+00
+
+agriculture: Percentage of land area that is arable\
+Distribution - wide-ranging\
+IQR: 13.02500, variance: 2.622336e+02, standard deviation: 1.619363e+01
+
+debt: Total debt service (% of GNI)\
+Distribution - Sharp decrease then flat\
+IQR: 6.64000, variance: 3.385360e+01, standard deviation: 5.818385e+00
+
+gdppercapita_growth: GDP per capita\
+Distribution  - decreasing with outliers\
+IQR: 2.13000, variance: 2.543614e+00, standard deviation: 1.594871e+00
+
+foodinsecurity: Prevalence of moderate or severe food insecurity in the population\
+Distribution - normal skewed right\
+IQR: 9.55000, variance: 1.128336e+02, standard deviation: 1.062232e+01
+
+Exports:% of GNP: exports of goods & services, include the value of merchandise, freight, insurance, transport, travel\
+Data source: https://data.worldbank.org/indicator/NE.EXP.GNFS.ZS\
+IQR: 20.17500, variance: 2.426063e+02, standard deviation: 1.557582e+01
+
+Corruption Perception Index (CPI): Transparency International's score of perceptions of corruption. Higher value indicates less corruption.\
+Data source: http://www.transparency.org/research/cpi\
+IQR: 3.25000, variance: 8.818182e+00, standard deviation: 2.969542e+00
+
+Income: Income per person adjusted for purchasing power\
+Data Source: World Bank, http:llgapm.io/dgdppc\
+IQR: 5350.00000, variance: 2.689152e+07, standard deviation: 5.185703e+03
+
+Vaccine: Proportion of people who disagree that vaccines are effective for children to have\
+Data Source: http://gapm.io/dvaccine_confidence\
+IQR: 5.47500, variance: 3.927970e+01, standard deviation: 6.267352e+00
+
+## General observations 
+There are some variables with significant left skew i.e beyond a certain threshold, the variable will most likely not affect the target variable any more (e.g water, sanitation).
+There are some variables with significant right skew i.e below a certain threshold, the variable will most likely not affect the target variable any more (e.g debt).
+There are a lot of variables with substantial numbers of missing values.
+
+## knn imputation
+From our summary, we find that foodsecurity,vaccine and aged_15plus_unemployment_rate_percent have a high number of missing variables. However, in general, our dataset contains very few full entries (12). As such, we employ KNN imputation in order to 
+fill in the missing entries.
+
+```{r}
+library(VIM)
+df_variables_imputed=kNN(df_variables%>%dplyr::select(-hapiscore_whr),k=10,imp_var=F)
+df_variables_imputed['hapiscore_whr']=df_variables$hapiscore_whr
+```
+
+## Checking knn imputation
+
+In order to see if our knn imputation significantly affects the relationship between variables that did not have a large number of missing entries, we compare the correlation plots before and after imputation.
+
+```{r,fig.width=10,echo=F}
+ggcorr(df_variables%>%dplyr::select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 10)+ggtitle("Before imputation")
+ggcorr(df_variables_imputed%>%dplyr::select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 10)+ggtitle("After imputation")
+```
+
+With knn imputation at k=10, the variable "right" is most affected, as its correlation with other variables was decreased from the imputation process. However, for reasons below, this will not be a problem.
+
+```{r,echo=F}
+ggcorr(df_variables_imputed%>%dplyr::select(-hapiscore_whr),geom="circle",layout.exp = 10)+ggtitle("Full correlation matrix after imputation")
+```
+
+From the graph above, we see that the following variables are relatively uncorrelated from others: gdppercapita_growth,forestcoverage,sdi,aged_15plus_unemployment_rate_percent,parliament,vaccine.
+
+## Using standard regression
+
+Based on the distinction above, we execute a two step process:
+
+1. We do a regression of the happiness score based on these uncorrelated features to determine those with a statistically significant effect on the target.
+2. We do a PR decomposition of the remaining variables to eliminate the multicollinearity concerns, and use the PCs cumulatively accounting for more than 80% of the total target variance for a PCR regression.
+3. We do a PCR regression using the identified PCs alongside the independent features above.
+4. We select the most parsimonious model, and use 10-fold cross validation to achieve the best model.
+
+#### Step 1 
+```{r}
+lm_independent=lm(hapiscore_whr~gdppercapita_growth+forestcoverage+sdi+aged_15plus_unemployment_rate_percent+parliament+vaccine,data=df_variables_imputed)
+summary(lm_independent)
+```
+
+Based on the model, sdi and parliament are viable uncorrelated features with a statistically significant effect on the target variable. We also check for multicollinearity in the model with VIF, and see that our assumption of independence of feature variables is correct.
+
+```{r,echo=F}
+car::vif(lm_independent)
+```
+
+#### Step 2
+
+```{r,echo=F}
+df_variables_remaining=df_variables_imputed%>%dplyr::select(-gdppercapita_growth,-forestcoverage,-sdi,-aged_15plus_unemployment_rate_percent,-parliament,-hapiscore_whr,-vaccine)
+```
+
+```{r}
+pr_happiness=prcomp(df_variables_remaining,scale=T,center=T)
+pr_var=pr_happiness$sdev^2
+prop_var=pr_var/sum(pr_var)
+plot(cumsum(prop_var),xlab="Number of PCs",ylab="Cumulative proportion of total variance")
+```
+
+We decide to use 4 PCs, which account for 80% of the total variance.
+
+```{r,echo=F}
+library(factoextra)
+fviz_contrib(pr_happiness,choice="var",axes=1)
+```
+
+Restricting ourselves to the top 5 contributing variables to the first PC, we can argue that hdiindex, internetusers foodinsecurity,mortality and sanitation are top 5 variables that strongly explain the variance in the observations, and possible, the variance in the target variable.
+
+#### Step 3
+
+```{r}
+pr_pc=pr_happiness$x[,1:4]
+pr_pc=cbind(pr_pc,df_variables_imputed%>%dplyr::select(sdi,parliament))
+pr_pc['hapiscore_whr']=df_variables$hapiscore_whr
+# Pure PCR regression
+model_pure_pcr=lm(hapiscore_whr~PC1+PC2+PC3+PC4,data=pr_pc)
+# PCR + selected independent variables 
+model_pcr_additive=lm(hapiscore_whr~PC1+PC2+PC3+PC4+sdi+parliament,data=pr_pc)
+summary(model_pcr_additive)
+```
+
+To see whether our independent features add any value to our PCR model, we conduct a model F-test using both. We see that the model with our independent variables along the PCs does not yield a better fit than the pure PCR model for parsimony, so the latter is preferred. In fact, we may only need 3 PCs rather than 4.
+
+```{r}
+anova(model_pure_pcr,model_pcr_additive,test="F")
+```
+
+We fit the most parsimonious model, which includes the first 3 PCs.
+
+```{r,fig.width=10}
+model_3_pcr=lm(hapiscore_whr~PC1+PC2+PC3,data=pr_pc)
+par(mfrow=c(1,2))
+plot(model_pure_pcr,which=c(1))
+plot(model_pure_pcr,which=c(2))
+```
+
+Based on the diagnostics plot above, while our residuals do follow a normal distribution, there seems to be less variability at higher levels of the fitted values/predicted happiness scores. 
+
+```{r,echo=F}
+working_pc=pr_pc%>%filter(!is.na(hapiscore_whr))
+df_variables_full=df_variables_imputed%>%filter(!is.na(hapiscore_whr))
+```
+
+```{r}
+# Constructing our 10-fold cross validation of the 3 PC regression
+set.seed(123)
+lm_model_final_cv=train(hapiscore_whr~PC1+PC2+PC3,
+      method="lm",
+      data=working_pc,
+      trControl=trainControl(method="cv",number=10))
+```
+
+```{r,echo=F}
+predictions_cv=predict(lm_model_final_cv)
+predictions=predict(model_3_pcr)
+```
+
+Additionally, when combined with the result of the 10-fold CV regression model, our model appears to have bias. This indicates either high leverage values or possible missing covariates.
+
+## Stepwise regression with 10-fold cross-validation
+
+Stepwise regression allows us to choose the best model by AIC (Akaike Information Criterion), which measures how well a model fits the data that it was generated from. AIC is calculated based on the number of independent variables used to build the model, and the maximum likelihood estimate of the model. The best-fit model according to AIC is the one that is able to explain the greatest amount of variation using the fewest possible independent variables, and in statistical comparison, the smaller the AIC, the better the model fit. It effectively acts as a form of dimensionality reduction. Here, we combine it with 10-fold cross validation.
+
+```{r}
+train.control <- trainControl(method = "cv", number = 10)
+res.lm <- lm(hapiscore_whr ~., data = df_variables_full)
+# Train the model
+set.seed(123)
+step.model <- train(hapiscore_whr ~., data = df_variables_full,
+                    method = "lmStepAIC", 
+                    trControl = train.control,
+                    trace = FALSE
+                    )
+step.model$results
+summary(step.model$finalModel)
+print("Model VIF:")
+car::vif(step.model$finalModel)
+```
+
+
+The adjusted R-squared for this model is  0.7411, which means that our model reasonally well captures 74.11% of the variability in the data. The RMSE of the model is 7.054885. The AIC of the model is 914.4297. 
+
+## Backward selection regression with 10-fold cross-validation
+
+Given that our model includes 21 predictor variables, we use nvmax from 1 to 21 to identify the best models. 
+1. We also use 10-fold cross-validation to estimate the average prediction error of each of the models, and this metric allows us to directly compare the models and select the best model that minimize RMSE. 
+2. Using the best tuning values, we are able to find that the model with 2 variables (respectively unemployment rate, hdi) is the one that has the lowest RMSE. 
+3. The resulting regression shows that all 2 predictor variables are statistcially significant, and in fact, 4 out of 5 predictor variables included are significant at the 0.1% level. The Adjusted R-squared value is 0.7011. Even though the adjusted R-squared value is comparatively lower than the above-mentioned StepAIC model, this new model gives us the lowest RMSE of 6.604244	in all linear models. The AIC of the model is 928.0069. 
+
+```{r}
+set.seed(123)
+# Set up repeated k-fold cross-validation
+#Train the model
+step.model1 <- train(hapiscore_whr ~parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+hdiindex+forestcoverage+
+                       militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+
+                       exports+corruption+vaccine+incomeperperson, data = df_variables_full,
+                    method = "leapBackward",
+                    trControl = train.control,
+                    tuneGrid = data.frame(nvmax = 1:21))
+step.model1$results
+step.model1$bestTune
+#summary(step.model1$finalModel)
+model.lm2 <- lm(hapiscore_whr~aged_15plus_unemployment_rate_percent+hdiindex, data=df_variables_full)
+summary(model.lm2)
+print("Model VIF:")
+car::vif(model.lm2)
+```
+
+## Model comparisons
+```{r}
+model_name=c("CV 3 PCR","CV StepAIC","CV Backward selection")
+adj_r_squared=c(summary(lm_model_final_cv)$adj.r.squared,summary(step.model$finalModel)$adj.r.squared,summary(model.lm2)$adj.r.squared)
+rmse_model=c(RMSE(fitted(lm_model_final_cv),df_variables_full$hapiscore_whr),
+             RMSE(fitted(step.model$finalModel),df_variables_full$hapiscore_whr),
+             RMSE(fitted(model.lm2),df_variables_full$hapiscore_whr))
+```
+
+```{r}
+final_compare=data.frame(model_name=model_name,adj_r_squared=adj_r_squared,rmse=rmse_model)
+final_compare%>%pivot_longer(c("adj_r_squared","rmse"))%>%pivot_wider(names_from=model_name,values_from=value)
+```
+
+## Summary
+From our CV 3 PCR model, we can argue that hdiindex, internetusers, foodinsecurity, mortality and sanitation have statistically significant effects on a country's happiness.\
+From our CV StepAIC model, we can argue that aged_15plus_unemployment_rate_percent,sanitation,hdiindex,debt and incomeperperson have statistically significant effects on a country's happiness.\
+From our CV backward regression model, we can argue that aged_15plus_unemployment_rate_percent and hdiindex have statistically significant effects on a country's happiness.\
+In all 3 cases, it is clear that the HDI index is a generally good indicator for a country's hapiness (at the cost of sounding redundant). 
+
+```{r,echo=F}
+ggplot(df_variables_full,aes(x=hdiindex,y=hapiscore_whr))+geom_point()+theme_bw()+labs(x="HDI Index",y="Happiness score")+ggtitle("Happiness score against HDI")+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank())
+```
+
