@@ -28,7 +28,7 @@ library(ROCR)
 ```
 
 ```{r}
-df=readRDS("./merged_gapminder_happiness.rds")
+df=readRDS("./merged_gapminder_happiness.rds")%>%filter(!is.na(hdiindex))
 df_variables=df%>%dplyr::select(-country,-year)
 ```
 
@@ -143,6 +143,32 @@ IQR: 5.47500, variance: 3.927970e+01, standard deviation: 6.267352e+00
 There are some variables with significant left skew i.e beyond a certain threshold, the variable will most likely not affect the target variable any more (e.g water, sanitation).
 There are some variables with significant right skew i.e below a certain threshold, the variable will most likely not affect the target variable any more (e.g debt).
 There are a lot of variables with substantial numbers of missing values.
+
+## Mean imputation:
+```{r}
+df_variables$parliament[is.na(df_variables$parliament)] <- mean(df_variables$parliament, na.rm=TRUE)
+df_variables$hapiscore_whr[is.na(df_variables$hapiscore_whr)] <- mean(df_variables$hapiscore_whr, na.rm=TRUE)
+df_variables$aged_15plus_unemployment_rate_percent[is.na(df_variables$aged_15plus_unemployment_rate_percent)] <- mean(df_variables$aged_15plus_unemployment_rate_percent, na.rm=TRUE)
+df_variables$right[is.na(df_variables$right)] <- mean(df_variables$right, na.rm=TRUE)
+df_variables$sanitation[is.na(df_variables$sanitation)] <- mean(df_variables$sanitation, na.rm=TRUE)
+df_variables$hdiindex[is.na(df_variables$hdiindex)] <- mean(df_variables$hdiindex, na.rm=TRUE)
+df_variables$edu[is.na(df_variables$edu)] <- mean(df_variables$edu, na.rm=TRUE)
+df_variables$internetusers[is.na(df_variables$internetusers)] <- mean(df_variables$internetusers, na.rm=TRUE)
+df_variables$sdi[is.na(df_variables$sdi)] <- mean(df_variables$sdi, na.rm=TRUE)
+df_variables$forestcoverage[is.na(df_variables$forestcoverage)] <- mean(df_variables$forestcoverage, na.rm=TRUE)
+df_variables$militaryexpenditure[is.na(df_variables$militaryexpenditure)] <- mean(df_variables$militaryexpenditure, na.rm=TRUE)
+df_variables$mortality[is.na(df_variables$mortality)] <- mean(df_variables$mortality, na.rm=TRUE)
+df_variables$wateraccess[is.na(df_variables$wateraccess)] <- mean(df_variables$wateraccess, na.rm=TRUE)
+df_variables$broadband[is.na(df_variables$broadband)] <- mean(df_variables$broadband, na.rm=TRUE)
+df_variables$agriculture[is.na(df_variables$agriculture)] <- mean(df_variables$agriculture, na.rm=TRUE)
+df_variables$debt[is.na(df_variables$debt)] <- mean(df_variables$debt, na.rm=TRUE)
+df_variables$gdppercapita_growth[is.na(df_variables$gdppercapita_growth)] <- mean(df_variables$gdppercapita_growth, na.rm=TRUE)
+df_variables$foodinsecurity[is.na(df_variables$foodinsecurity)] <- mean(df_variables$foodinsecurity, na.rm=TRUE)
+df_variables$corruption[is.na(df_variables$corruption)] <- mean(df_variables$corruption, na.rm=TRUE)
+df_variables$incomeperperson[is.na(df_variables$incomeperperson)] <- mean(df_variables$incomeperperson, na.rm=TRUE)
+df_variables$exports[is.na(df_variables$exports)] <- mean(df_variables$exports, na.rm=TRUE)
+df_variables$vaccine[is.na(df_variables$vaccine)] <- mean(df_variables$vaccine, na.rm=TRUE)
+```
 
 
 ## DEPRECATE
