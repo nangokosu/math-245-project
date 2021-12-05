@@ -8,61 +8,6 @@ output:
       collapsed: no
       smooth_scroll: no
 ---
-```{r}
-library(tidyverse)
-files=c("hdiindex.csv",
-        "hapiscore_whr.csv",
-        "parliament.csv",
-        "aged_15plus_unemployment_rate_percent.csv",
-        "right.csv",
-        "sanitation.csv",
-        "edu.csv",
-        "internetusers.csv",
-        "sdi.csv",
-        "forestcoverage.csv",
-        "militaryexpenditure.csv",
-        "mortality.csv",
-        "wateraccess.csv",
-        "broadband.csv",
-        "agriculture.csv",
-        "debt.csv",
-        "gdppercapita_growth.csv",
-        "foodinsecurity.csv",
-        "corruption.csv",
-        "incomeperperson.csv",
-        "exports.csv",
-        "vaccine.csv")
-download_and_create_df=function(link){
-  root="https://raw.githubusercontent.com/nangokosu/math-245-project/main/data/"
-  df=read_csv(paste0(root,link))
-  col_name=str_replace(link,".csv","")
-  final_df=gather(df, key="year", value=col_name,-country)
-  colnames(final_df)[3]=col_name
-  final_df=mutate(final_df, year=as.numeric(year))
-  return(final_df)
-}
-final_dfs=lapply(files,download_and_create_df)
-full_data=final_dfs%>%reduce(full_join,by=c("country","year"))
-full_data2=full_data%>%filter(year==2014)
-
-# Renaming certain columns to match original data assembling file
-full_data2$aged_15plus_unemployment_rate_percent <- as.numeric(as.character(full_data2$aged_15plus_unemployment_rate_percent))
-full_data2$right <- as.numeric(as.character(full_data2$right))*100
-full_data2$sanitation <- as.numeric(as.character(full_data2$sanitation))*100
-full_data2$parliament <- as.numeric(as.character(full_data2$parliament))*100
-full_data2$hapiscore_whr <- as.numeric(as.character(full_data2$hapiscore_whr))*100
-full_data2$internetusers <- as.numeric(full_data2$internetusers)
-full_data2$broadband<-as.numeric(full_data2$broadband)
-full_data2$militaryexpenditure<-as.numeric(full_data2$militaryexpenditure)
-full_data2$gdppercapita_growth<-as.numeric(full_data2$gdppercapita_growth)
-
-# Dealing with income per person data:
-full_data2$incomeperperson=str_replace(str_replace(full_data2$incomeperperson, "\\.", ""),"k","00")
-full_data2$incomeperperson<-as.numeric(full_data2$incomeperperson)
-
-# Write to RDS
-saveRDS(full_data2,"./merged_gapminder_happiness.rds")
-```
 
 ```{r setup,include=F}
 knitr::opts_chunk$set(echo = TRUE,warning=FALSE,message=FALSE,fig.width=10)
@@ -70,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE,warning=FALSE,message=FALSE,fig.width=10)
 
 ## Introduction
 
-Our project today is to determine what socio-economic variables have statistically significant effects on a country's level of happiness. We intend to do this through different types of regression models, applied to a dataset of 241 countries in 2014.
+Our project today is to determine what socio-economic variables have statistically significant effects on a country's level of development as measured by the HDI. We intend to do this through different types of regression models, applied to a dataset of 241 countries in 2014.
 
 ```{r,echo=F,include=F}
 library(tidyverse)
@@ -81,7 +26,6 @@ library(MASS)
 library(glmnet)
 library(ROCR)
 ```
-
 
 ```{r}
 df=readRDS("./merged_gapminder_happiness.rds")
@@ -96,6 +40,7 @@ hist(na.omit(df_variables$hdiindex),main="Histogram of HDI Index",xlab="HDI")
 boxplot(na.omit(df_variables$hdiindex),main="Boxplot of HDI Index",ylab="HDI")
 summary(na.omit(df_variables$hdiindex))
 ```
+
 hdiindex: [Human Development Index (HDI)](https://www.hdr.undp.org/en/content/human-development-index-hdi)\
 distribution - concave down increasing, wide spread.\
 IQR: 0.02125, variance: 9.375379e-04, standard deviation: 3.061924e-02\
@@ -199,6 +144,8 @@ There are some variables with significant left skew i.e beyond a certain thresho
 There are some variables with significant right skew i.e below a certain threshold, the variable will most likely not affect the target variable any more (e.g debt).
 There are a lot of variables with substantial numbers of missing values.
 
+
+## DEPRECATE
 ## knn imputation
 From our summary, we find that foodsecurity,vaccine and aged_15plus_unemployment_rate_percent have a high number of missing variables. However, in general, our dataset contains very few full entries (12). As such, we employ KNN imputation in order to 
 fill in the missing entries.
@@ -209,6 +156,7 @@ df_variables_imputed=kNN(df_variables%>%dplyr::select(-hapiscore_whr),k=10,imp_v
 df_variables_imputed['hapiscore_whr']=df_variables$hapiscore_whr
 ```
 
+# DEPRECATE
 ## Checking knn imputation
 
 In order to see if our knn imputation significantly affects the relationship between variables that did not have a large number of missing entries, we compare the correlation plots before and after imputation.
@@ -226,6 +174,8 @@ ggcorr(df_variables_imputed%>%dplyr::select(-hapiscore_whr),geom="circle",layout
 
 From the graph above, we see that the following variables are relatively uncorrelated from others: gdppercapita_growth,forestcoverage,sdi,aged_15plus_unemployment_rate_percent,parliament,vaccine.
 
+
+## Keep
 ## Using standard regression
 
 Based on the distinction above, we execute a two step process:
@@ -320,7 +270,7 @@ predictions=predict(model_3_pcr)
 
 Additionally, when combined with the result of the 10-fold CV regression model, our model appears to have bias. This indicates either high leverage values or possible missing covariates.
 
-#Mean Substitution
+# Mean Substitution
 ```{r}
 df_variables$parliament[is.na(df_variables$parliament)] <- mean(df_variables$parliament, na.rm=TRUE)
 df_variables$hapiscore_whr[is.na(df_variables$hapiscore_whr)] <- mean(df_variables$hapiscore_whr, na.rm=TRUE)
@@ -454,6 +404,7 @@ label="none", habillage = df_variables$hdistatus, addEllipses = T, legend.title=
 df.cart <- train(hdistatus ~ hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, data=df_variables,method="rpart1SE", trControl =trainControl(method = "cv", number=5) )
 df.cart
 ```
+
 ```{r}
 library(rattle)
 fancyRpartPlot(df.cart$finalModel)
