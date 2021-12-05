@@ -427,7 +427,7 @@ label="none", habillage = df_variables$hdistatus, addEllipses = T, legend.title=
 
 #Classification Tree
 ```{r}
-df.cart <- train(hdistatus ~ hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, data=df_variables,method="rpart1SE", trControl =trainControl(method = "cv", number=5) )
+df.cart <- train(hdiindex ~ hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, data=df_variables,method="rpart1SE", trControl =trainControl(method = "cv", number=5) )
 df.cart
 ```
 
@@ -443,7 +443,7 @@ varImp(df.cart)
 ```{r}
 pihat <- predict(df.cart$finalModel, type="prob")
 library(ROCR)
-pred = prediction(pihat[,2], df_variables$hdistatus)
+pred = prediction(pihat[,2], df_variables$hdiindex)
 perf = performance(pred, "tpr", "fpr")
 plot(perf)
 abline(a=0, b=1, lty=2)
@@ -457,7 +457,7 @@ library(MASS)
 library(caret)
 library(randomForest)
 set.seed(1)
-df.RF.cv <- train(hdistatus~hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, data=df_variables,method="rf", importance=TRUE, trControl =trainControl(method = "cv", number=5) )
+df.RF.cv <- train(hdiindex~hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, data=df_variables,method="rf", importance=TRUE, trControl =trainControl(method = "cv", number=5) )
 df.RF.cv$finalModel
 ```
 
@@ -468,7 +468,7 @@ varImp(df.RF.cv)
 ```{r}
 pihat <- predict(df.RF.cv$finalModel, type="prob")
 library(ROCR)
-pred = prediction(pihat[,2], df_variables$hdistatus)
+pred = prediction(pihat[,2], df_variables$hdiindex)
 perf = performance(pred, "tpr", "fpr")
 plot(perf)
 abline(a=0, b=1, lty=2)
