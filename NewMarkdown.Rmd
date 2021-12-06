@@ -24,7 +24,7 @@ library(ggplot2)
 library(caret)
 library(MASS)
 library(glmnet)
-library(ROCR)
+library(factoextra)
 ```
 
 ```{r}
@@ -151,7 +151,6 @@ df_variables$hapiscore_whr[is.na(df_variables$hapiscore_whr)] <- mean(df_variabl
 df_variables$aged_15plus_unemployment_rate_percent[is.na(df_variables$aged_15plus_unemployment_rate_percent)] <- mean(df_variables$aged_15plus_unemployment_rate_percent, na.rm=TRUE)
 df_variables$right[is.na(df_variables$right)] <- mean(df_variables$right, na.rm=TRUE)
 df_variables$sanitation[is.na(df_variables$sanitation)] <- mean(df_variables$sanitation, na.rm=TRUE)
-df_variables$hdiindex[is.na(df_variables$hdiindex)] <- mean(df_variables$hdiindex, na.rm=TRUE)
 df_variables$edu[is.na(df_variables$edu)] <- mean(df_variables$edu, na.rm=TRUE)
 df_variables$internetusers[is.na(df_variables$internetusers)] <- mean(df_variables$internetusers, na.rm=TRUE)
 df_variables$sdi[is.na(df_variables$sdi)] <- mean(df_variables$sdi, na.rm=TRUE)
@@ -171,263 +170,95 @@ df_variables$vaccine[is.na(df_variables$vaccine)] <- mean(df_variables$vaccine, 
 ```
 
 
-## DEPRECATE
-## knn imputation
-From our summary, we find that foodsecurity,vaccine and aged_15plus_unemployment_rate_percent have a high number of missing variables. However, in general, our dataset contains very few full entries (12). As such, we employ KNN imputation in order to 
-fill in the missing entries.
+## Dimension reduction via PCA:
 
+To reduce the number of variables to apply to our regression model, we propose applying PCA to all feature variables, picking the first PC which accounts for the largest variation in the data, and choosing the variable with above average contribution.
 ```{r}
-library(VIM)
-df_variables_imputed=kNN(df_variables%>%dplyr::select(-hapiscore_whr),k=10,imp_var=F)
-df_variables_imputed['hapiscore_whr']=df_variables$hapiscore_whr
-```
-
-# DEPRECATE
-## Checking knn imputation
-
-In order to see if our knn imputation significantly affects the relationship between variables that did not have a large number of missing entries, we compare the correlation plots before and after imputation.
-
-```{r,fig.width=10,echo=F}
-ggcorr(df_variables%>%dplyr::select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 10)+ggtitle("Before imputation")
-ggcorr(df_variables_imputed%>%dplyr::select(-hapiscore_whr,-foodinsecurity,-aged_15plus_unemployment_rate_percent),geom="circle",layout.exp = 10)+ggtitle("After imputation")
-```
-
-With knn imputation at k=10, the variable "right" is most affected, as its correlation with other variables was decreased from the imputation process. However, for reasons below, this will not be a problem.
-
-```{r,echo=F}
-ggcorr(df_variables_imputed%>%dplyr::select(-hapiscore_whr),geom="circle",layout.exp = 10)+ggtitle("Full correlation matrix after imputation")
-```
-
-From the graph above, we see that the following variables are relatively uncorrelated from others: gdppercapita_growth,forestcoverage,sdi,aged_15plus_unemployment_rate_percent,parliament,vaccine.
-
-
-## Keep
-## Using standard regression
-
-Based on the distinction above, we execute a two step process:
-
-1. We do a regression of the happiness score based on these uncorrelated features to determine those with a statistically significant effect on the target.
-2. We do a PR decomposition of the remaining variables to eliminate the multicollinearity concerns, and use the PCs cumulatively accounting for more than 80% of the total target variance for a PCR regression.
-3. We do a PCR regression using the identified PCs alongside the independent features above.
-4. We select the most parsimonious model, and use 10-fold cross validation to achieve the best model.
-
-#### Step 1 
-```{r}
-lm_independent=lm(hapiscore_whr~gdppercapita_growth+forestcoverage+sdi+aged_15plus_unemployment_rate_percent+parliament+vaccine,data=df_variables_imputed)
-summary(lm_independent)
-```
-
-Based on the model, sdi and parliament are viable uncorrelated features with a statistically significant effect on the target variable. We also check for multicollinearity in the model with VIF, and see that our assumption of independence of feature variables is correct.
-
-```{r,echo=F}
-car::vif(lm_independent)
-```
-
-#### Step 2
-
-```{r,echo=F}
-df_variables_remaining=df_variables_imputed%>%dplyr::select(-gdppercapita_growth,-forestcoverage,-sdi,-aged_15plus_unemployment_rate_percent,-parliament,-hapiscore_whr,-vaccine)
-```
-
-```{r}
-pr_happiness=prcomp(df_variables_remaining,scale=T,center=T)
-pr_var=pr_happiness$sdev^2
-prop_var=pr_var/sum(pr_var)
-plot(cumsum(prop_var),xlab="Number of PCs",ylab="Cumulative proportion of total variance")
-```
-
-We decide to use 4 PCs, which account for 80% of the total variance.
-
-```{r,echo=F}
-library(factoextra)
-fviz_contrib(pr_happiness,choice="var",axes=1)
-```
-
-Restricting ourselves to the top 5 contributing variables to the first PC, we can argue that hdiindex, internetusers foodinsecurity,mortality and sanitation are top 5 variables that strongly explain the variance in the observations, and possible, the variance in the target variable.
-
-#### Step 3
-
-```{r}
-pr_pc=pr_happiness$x[,1:4]
-pr_pc=cbind(pr_pc,df_variables_imputed%>%dplyr::select(sdi,parliament))
-pr_pc['hapiscore_whr']=df_variables$hapiscore_whr
-# Pure PCR regression
-model_pure_pcr=lm(hapiscore_whr~PC1+PC2+PC3+PC4,data=pr_pc)
-# PCR + selected independent variables 
-model_pcr_additive=lm(hapiscore_whr~PC1+PC2+PC3+PC4+sdi+parliament,data=pr_pc)
-summary(model_pcr_additive)
-```
-
-To see whether our independent features add any value to our PCR model, we conduct a model F-test using both. We see that the model with our independent variables along the PCs does not yield a better fit than the pure PCR model for parsimony, so the latter is preferred. In fact, we may only need 3 PCs rather than 4.
-
-```{r}
-anova(model_pure_pcr,model_pcr_additive,test="F")
-```
-
-We fit the most parsimonious model, which includes the first 3 PCs.
-
-```{r,fig.width=10}
-model_3_pcr=lm(hapiscore_whr~PC1+PC2+PC3,data=pr_pc)
-par(mfrow=c(1,2))
-plot(model_pure_pcr,which=c(1))
-plot(model_pure_pcr,which=c(2))
-```
-
-Based on the diagnostics plot above, while our residuals do follow a normal distribution, there seems to be less variability at higher levels of the fitted values/predicted happiness scores. 
-
-```{r,echo=F}
-working_pc=pr_pc%>%filter(!is.na(hapiscore_whr))
-df_variables_full=df_variables_imputed%>%filter(!is.na(hapiscore_whr))
-```
-
-```{r}
-# Constructing our 10-fold cross validation of the 3 PC regression
-set.seed(123)
-lm_model_final_cv=train(hapiscore_whr~PC1+PC2+PC3,
-      method="lm",
-      data=working_pc,
-      trControl=trainControl(method="cv",number=10))
+pr_hdi=prcomp(df_variables%>%dplyr::select(-hdiindex),scale=T,center=T)
 ```
 
 ```{r,echo=F}
-predictions_cv=predict(lm_model_final_cv)
-predictions=predict(model_3_pcr)
+fviz_contrib(pr_hdi,choice="var")
 ```
 
-Additionally, when combined with the result of the 10-fold CV regression model, our model appears to have bias. This indicates either high leverage values or possible missing covariates.
+Based on the proposed plan, we choose to select the following variable: internetusers, broadband, edu, mortality, sanitation, corruption, incomeperperson,wateraccess, hapiscore_whr and right.
 
-# Mean Substitution
-```{r}
-df_variables$parliament[is.na(df_variables$parliament)] <- mean(df_variables$parliament, na.rm=TRUE)
-df_variables$hapiscore_whr[is.na(df_variables$hapiscore_whr)] <- mean(df_variables$hapiscore_whr, na.rm=TRUE)
-df_variables$aged_15plus_unemployment_rate_percent[is.na(df_variables$aged_15plus_unemployment_rate_percent)] <- mean(df_variables$aged_15plus_unemployment_rate_percent, na.rm=TRUE)
-df_variables$right[is.na(df_variables$right)] <- mean(df_variables$right, na.rm=TRUE)
-df_variables$sanitation[is.na(df_variables$sanitation)] <- mean(df_variables$sanitation, na.rm=TRUE)
-df_variables$hdiindex[is.na(df_variables$hdiindex)] <- mean(df_variables$hdiindex, na.rm=TRUE)
-df_variables$edu[is.na(df_variables$edu)] <- mean(df_variables$edu, na.rm=TRUE)
-df_variables$internetusers[is.na(df_variables$internetusers)] <- mean(df_variables$internetusers, na.rm=TRUE)
-df_variables$sdi[is.na(df_variables$sdi)] <- mean(df_variables$sdi, na.rm=TRUE)
-df_variables$forestcoverage[is.na(df_variables$forestcoverage)] <- mean(df_variables$forestcoverage, na.rm=TRUE)
-df_variables$militaryexpenditure[is.na(df_variables$militaryexpenditure)] <- mean(df_variables$militaryexpenditure, na.rm=TRUE)
-df_variables$mortality[is.na(df_variables$mortality)] <- mean(df_variables$mortality, na.rm=TRUE)
-df_variables$wateraccess[is.na(df_variables$wateraccess)] <- mean(df_variables$wateraccess, na.rm=TRUE)
-df_variables$broadband[is.na(df_variables$broadband)] <- mean(df_variables$broadband, na.rm=TRUE)
-df_variables$agriculture[is.na(df_variables$agriculture)] <- mean(df_variables$agriculture, na.rm=TRUE)
-df_variables$debt[is.na(df_variables$debt)] <- mean(df_variables$debt, na.rm=TRUE)
-df_variables$gdppercapita_growth[is.na(df_variables$gdppercapita_growth)] <- mean(df_variables$gdppercapita_growth, na.rm=TRUE)
-df_variables$foodinsecurity[is.na(df_variables$foodinsecurity)] <- mean(df_variables$foodinsecurity, na.rm=TRUE)
-df_variables$corruption[is.na(df_variables$corruption)] <- mean(df_variables$corruption, na.rm=TRUE)
-df_variables$incomeperperson[is.na(df_variables$incomeperperson)] <- mean(df_variables$incomeperperson, na.rm=TRUE)
-df_variables$exports[is.na(df_variables$exports)] <- mean(df_variables$exports, na.rm=TRUE)
-df_variables$vaccine[is.na(df_variables$vaccine)] <- mean(df_variables$vaccine, na.rm=TRUE)
+Before we apply the regression model, we check the linearity assumption for the variables, and see that most variables have a linear relationship with HDI, except for incomeperperson, which has a linear relationship once a log transformation has been applied to it.
+
+```{r,fig.width=10,fig.height=10}
+par(mfrow=c(5,2))
+for (k in c("internetusers","broadband","edu","mortality","sanitation","corruption","incomeperperson","wateraccess","hapiscore_whr","right")){
+  if (k=="incomeperperson"){
+    plot(x=log(df_variables_2[[k]]),y=df_variables_2$hdiindex,ylab="HDI index",xlab=paste0("Value for ",k))
+  }else{
+  plot(x=df_variables_2[[k]],y=df_variables_2$hdiindex,ylab="HDI index",xlab=paste0("Value for ",k))}}
 ```
 
-## Stepwise regression with 10-fold cross-validation
 
-Stepwise regression allows us to choose the best model by AIC (Akaike Information Criterion), which measures how well a model fits the data that it was generated from. AIC is calculated based on the number of independent variables used to build the model, and the maximum likelihood estimate of the model. The best-fit model according to AIC is the one that is able to explain the greatest amount of variation using the fewest possible independent variables, and in statistical comparison, the smaller the AIC, the better the model fit. It effectively acts as a form of dimensionality reduction. Here, we combine it with 10-fold cross validation.
 
 ```{r}
-model.lm1 <- lm(hdiindex~hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine,data=df_variables)
-#Influence Measures Check & Remove Influence Measures
-influence.measures(model.lm1)
-df_variables<-df_variables[-c(2,5,20, 27, 29, 37, 40, 73, 80, 86, 95, 98, 106, 118, 133, 144, 147, 148, 151, 156, 164, 169, 174, 177, 190, 191, 194, 213),]
-model.lm2 <- lm(hdiindex~hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine,data=df_variables)
-summary(model.lm2)
-plot(model.lm2)
-#Normality Assumption Satisfied
-shapiro.test(model.lm2$residuals)
+df_variables_2=df_variables%>%dplyr::select(internetusers, broadband, edu, mortality, sanitation, corruption,incomeperperson,wateraccess, hapiscore_whr,right,hdiindex)%>%mutate(logincomeperperson=log(incomeperperson))%>%select(-incomeperperson)
+ggcorr(df_variables_2%>%dplyr::select(-hdiindex),geom="circle",layout.exp = 1)+ggtitle("Full correlation matrix after imputation")
 ```
+
+Based on our correlation plot, most of our variables are strongly correlated with each other. As such, if we are to introduce them as they are right now, the model would suffer from multicollinearity. As such, we decide to conduct an AIC regression model in order to remove some of the variables based on the Aikaike Information Criterion.
+
+## Step backwards regression:
+To reduce the number of regression variables further to the most important factors affecting a country's development level, we use step backwards regression with an aim of getting the most 3-5 important predictors.
+
+
 ```{r}
-train.control <- trainControl(method = "cv", number = 10)
-res.lm <- lm(hdiindex ~., data = df_variables)
+train.control <- trainControl(method = "cv", number = 5)
+res.lm <- lm(hdiindex ~., data = df_variables_2)
 # Train the model
 set.seed(123)
-step.model <- train(hdiindex ~., data = df_variables,
-                    method = "lmStepAIC", 
+step.model <- train(hdiindex ~., data = df_variables_2,
+                    method = "leapBackward", 
                     trControl = train.control,
-                    trace = FALSE
+                    trace = FALSE,
+                    tuneGrid = data.frame(nvmax = 3:5)
                     )
-step.model$results
-summary(step.model$finalModel)
-print("Model VIF:")
-car::vif(step.model$finalModel)
 ```
 
+Our step backwards model indicates that a 5 regressor model has the lowest AIC through the corss-validation process.
+```{r}
+step.model$bestTune
+```
+```{r}
+summary(step.model$finalModel)
+```
+Our five variable models include internetusers, education, mortality, logincomeperperson, and wateraccess.
 
-The adjusted R-squared for this model is  0.7411, which means that our model reasonally well captures 74.11% of the variability in the data. The RMSE of the model is 7.054885. The AIC of the model is 914.4297. 
+```{r}
+final_model_aic=lm(hdiindex~internetusers+edu+mortality+logincomeperperson+wateraccess,data=df_variables_2)
+```
 
-## Backward selection regression with 10-fold cross-validation
+Some model diagnostics:
 
-Given that our model includes 21 predictor variables, we use nvmax from 1 to 21 to identify the best models. 
-1. We also use 10-fold cross-validation to estimate the average prediction error of each of the models, and this metric allows us to directly compare the models and select the best model that minimize RMSE. 
-2. Using the best tuning values, we are able to find that the model with 2 variables (respectively unemployment rate, hdi) is the one that has the lowest RMSE. 
-3. The resulting regression shows that all 2 predictor variables are statistcially significant, and in fact, 4 out of 5 predictor variables included are significant at the 0.1% level. The Adjusted R-squared value is 0.7011. Even though the adjusted R-squared value is comparatively lower than the above-mentioned StepAIC model, this new model gives us the lowest RMSE of 6.604244	in all linear models. The AIC of the model is 928.0069. 
+The residual plots seem to exhibit homoskedasticity, and most of the residuals follow a normal distribution. This satisfies the linearity assumption.
+```{r}
+par(mfrow=c(1,2))
+plot(final_model_aic,which=c(1))
+plot(final_model_aic,which=c(2))
+```
 
+We check the VIF of the model to see if the strong correlations between the chosen variables have introduced multicollinearity into the model.
+
+```{r}
+vif(final_model_aic)
+```
+The VIF values for the model are not concerningly high, except for the value of internet users, which is slightly above the threshold of 5. While this means that the model does have some signs of multicollinearity, it is not very severe.
+
+In the context of possible multicollinearity between variables, linear regression might not be the best method. Instead, we try a random forest model that does not mind the multicollinear nature of our variables.
+
+
+## Classification Tree
 ```{r}
 set.seed(123)
-# Set up repeated k-fold cross-validation
-#Train the model
-step.model1 <- train(hdiindex ~parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+hapiscore_whr+forestcoverage+
-                       militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+
-                       exports+corruption+vaccine+incomeperperson, data = df_variables,
-                    method = "leapBackward",
-                    trControl = train.control,
-                    tuneGrid = data.frame(nvmax = 1:21))
-step.model1$results
-step.model1$bestTune
-summary(step.model1$finalModel)
-#model.lm3 <- lm(hdiindex~edu+mortality+wateraccess+broadband+incomeperperson, data=df_variables)
-#summary(model.lm3)
-#print("Model VIF:")
-#car::vif(model.lm3)
-```
-
-## Model comparisons
-```{r}
-model_name=c("CV 3 PCR","CV StepAIC","CV Backward selection")
-adj_r_squared=c(summary(lm_model_final_cv)$adj.r.squared,summary(step.model$finalModel)$adj.r.squared,summary(model.lm2)$adj.r.squared)
-rmse_model=c(RMSE(fitted(lm_model_final_cv),df_variables_full$hapiscore_whr),
-             RMSE(fitted(step.model$finalModel),df_variables_full$hapiscore_whr),
-             RMSE(fitted(model.lm2),df_variables_full$hapiscore_whr))
-```
-
-```{r}
-final_compare=data.frame(model_name=model_name,adj_r_squared=adj_r_squared,rmse=rmse_model)
-final_compare%>%pivot_longer(c("adj_r_squared","rmse"))%>%pivot_wider(names_from=model_name,values_from=value)
-```
-
-## Summary
-From our CV 3 PCR model, we can argue that hdiindex, internetusers, foodinsecurity, mortality and sanitation have statistically significant effects on a country's happiness.\
-From our CV StepAIC model, we can argue that aged_15plus_unemployment_rate_percent,sanitation,hdiindex,debt and incomeperperson have statistically significant effects on a country's happiness.\
-From our CV backward regression model, we can argue that aged_15plus_unemployment_rate_percent and hdiindex have statistically significant effects on a country's happiness.\
-In all 3 cases, it is clear that the HDI index is a generally good indicator for a country's hapiness (at the cost of sounding redundant). 
-
-```{r,echo=F}
-ggplot(df_variables_full,aes(x=hdiindex,y=hapiscore_whr))+geom_point()+theme_bw()+labs(x="HDI Index",y="Happiness score")+ggtitle("Happiness score against HDI")+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank())
-```
-
-
-#Principle Component Analysis
-```{r}
-mean(df_variables$hdiindex)
-#0.7053511
-df_variables$hdistatus[df_variables$hdiindex<0.7053511] <- "BelowAverage"
-df_variables$hdistatus[df_variables$hdiindex>0.7053511] <- "AboveAverage"
-df.pca <- prcomp(df_variables[,-c(22:23)], scale=TRUE)
-df.var = df.pca$sdev^2
-pve =df.var/sum(df.var)
-cumsum(pve)
-library(factoextra)
-fviz_eig(df.pca, ncp=72)
-summary(df.pca)$importance[,1:2]
-ind.pca <- get_pca_ind(df.pca) 
-fviz_pca_ind(df.pca,
-label="none", habillage = df_variables$hdistatus, addEllipses = T, legend.title="Status")
-```
-
-#Classification Tree
-```{r}
-df.cart <- train(hdiindex ~ hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, data=df_variables,method="rpart1SE", trControl =trainControl(method = "cv", number=5) )
+df.cart <- train(hdiindex ~ hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, 
+                 data=df_variables,
+                 method="rpart1SE", 
+                 trControl =trainControl(method = "cv", number=5) )
 df.cart
 ```
 
@@ -437,41 +268,28 @@ fancyRpartPlot(df.cart$finalModel)
 ```
 
 ```{r}
-varImp(df.cart)
+varImp(df.cart)$importance%>%arrange(desc(Overall))%>%head(5)
 ```
+Our tree model indicates that the top 5 variables that affect HDI are incomeperperson, internetusers, wateraccess, broadband and mortality.
 
+## Random Forest
 ```{r}
-pihat <- predict(df.cart$finalModel, type="prob")
-library(ROCR)
-pred = prediction(pihat[,2], df_variables$hdiindex)
-perf = performance(pred, "tpr", "fpr")
-plot(perf)
-abline(a=0, b=1, lty=2)
-auc.perf = performance(pred, "auc") 
-auc.perf@y.values
-```
-
-#Random Forest
-```{r}
-library(MASS)
-library(caret)
-library(randomForest)
-set.seed(1)
-df.RF.cv <- train(hdiindex~hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, data=df_variables,method="rf", importance=TRUE, trControl =trainControl(method = "cv", number=5) )
+set.seed(123)
+df.RF.cv <- train(hdiindex~hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, data=df_variables,
+                  method="rf", importance=TRUE, 
+                  trControl =trainControl(method = "cv", number=5) )
 df.RF.cv$finalModel
 ```
 
 ```{r}
-varImp(df.RF.cv)
+varImp(df.RF.cv)$importance%>%arrange(desc(Overall))%>%head(5)
 ```
 
+Our random forest model indicates that sdi, edu, incomeperperson, corruption and sanitation are the top 5 variables that affect HDI the most.
+## Model comparisons:
+
 ```{r}
-pihat <- predict(df.RF.cv$finalModel, type="prob")
-library(ROCR)
-pred = prediction(pihat[,2], df_variables$hdiindex)
-perf = performance(pred, "tpr", "fpr")
-plot(perf)
-abline(a=0, b=1, lty=2)
-auc.perf = performance(pred, "auc") 
-auc.perf@y.values
+
 ```
+
+
