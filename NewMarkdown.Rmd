@@ -1,5 +1,5 @@
 ---
-title: "In the pursuit of happiness"
+title: "Factors affecting a country's level of development"
 output:
   pdf_document:
     toc: yes
@@ -178,8 +178,10 @@ df_variables$exports[is.na(df_variables$exports)] <- mean(df_variables$exports, 
 df_variables$vaccine[is.na(df_variables$vaccine)] <- mean(df_variables$vaccine, na.rm=TRUE)
 ```
 
+\pagebreak 
 ## Regression
 #### Dimension reduction via PCA
+
 To reduce the number of variables to apply to our regression model, we propose applying PCA to all feature variables, picking the first PC which accounts for the largest variation in the data, and choosing the variables with above average contribution.
 ```{r}
 pr_hdi=prcomp(df_variables%>%dplyr::select(-hdiindex),scale=T,center=T)
@@ -191,7 +193,9 @@ fviz_contrib(pr_hdi,choice="var")
 
 Based on the proposed plan, we choose to select the following variable: internetusers, broadband, edu, mortality, sanitation, corruption, incomeperperson,wateraccess, hapiscore_whr and right.
 
+\pagebreak
 #### Linearity assumptions
+
 Before we apply the regression model, we check the linearity assumption for these variables, and see that most variables have a linear relationship with HDI, except for incomeperperson, which has a linear relationship once a log transformation has been applied to it.
 
 ```{r,echo=F}
@@ -256,6 +260,7 @@ Our five variable models include broadband, edu, mortality, logincomeperperson, 
 final_model_aic=lm(hdiindex~broadband+edu+mortality+logincomeperperson+wateraccess,data=df_variables_2)
 ```
 
+\pagebreak
 #### Model diagnostics
 \
 The residual plots seem to exhibit homoskedasticity, and most of the residuals follow a normal distribution. This satisfies the linearity assumption.
@@ -307,6 +312,8 @@ df.cart <- train(hdiindex ~hapiscore_whr+parliament+aged_15plus_unemployment_rat
                  trControl =trainControl(method = "cv", number=10) )
 df.cart
 ```
+
+\pagebreak
 We draw the regression tree to get an indication of the top 5 variables by variable importance:
 ```{r,echo=F}
 library(rattle)
