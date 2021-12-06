@@ -1,23 +1,23 @@
 ---
 title: "In the pursuit of happiness"
 output:
-  html_document:
+  pdf_document:
     toc: yes
-    toc_depth: 4
-    toc_float:
-      collapsed: no
-      smooth_scroll: no
+    toc_depth: '4'
+  word_document:
+    toc: yes
+    toc_depth: '4'
+  html_document: default
 ---
 
 ```{r setup,include=F}
-knitr::opts_chunk$set(echo = TRUE,warning=FALSE,message=FALSE,fig.width=10)
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE,message=FALSE,fig.width=10,fig.align="left")
 ```
 
 ## Introduction
-
 Our project today is to determine what socio-economic variables have statistically significant effects on a country's level of development as measured by the HDI. We intend to do this through different types of regression models, applied to a dataset of 241 countries in 2014.
 
-```{r,echo=F,include=F}
+```{r}
 library(tidyverse)
 library(GGally)
 library(ggplot2)
@@ -31,6 +31,13 @@ library(factoextra)
 df=readRDS("./merged_gapminder_happiness.rds")%>%filter(!is.na(hdiindex))
 df_variables=df%>%dplyr::select(-country,-year)
 ```
+\
+\
+\
+\
+\
+\
+\
 
 ## Exploratory Data Analysis
 #### Target variable
@@ -44,14 +51,17 @@ summary(na.omit(df_variables$hdiindex))
 hdiindex: [Human Development Index (HDI)](https://www.hdr.undp.org/en/content/human-development-index-hdi)\
 distribution - concave down increasing, wide spread.\
 IQR: 0.02125, variance: 9.375379e-04, standard deviation: 3.061924e-02\
+\pagebreak
 
 #### Independent variables
 ```{r,fig.width=10,fig.height=12,echo=F}
+par(mar = c(3,3,5,5))
 par(mfrow=c(4,6))
 for(i in colnames(df_variables)) {
   hist = boxplot(na.omit(df_variables[[i]]), breaks = 20, main = paste("Distribution of", i),xlab=NULL)
 }
 ```
+
 
 hapiscore_whr: This is the national average response to the question of life evaluations asking the following “Please imagine a ladder, with steps numbered from 0 at the bottom to 10 at the top. The top of the ladder represents the best possible life for you and the bottom of the ladder represents the worst possible life for you. On which step of the ladder would you say you personally feel you stand at this time?” This measure is also referred to as Cantril life ladder. Gapminder has converted this indicator's scale from 0 to 100.\
 Distribution - mild hump/stretched-out normal curve with wide spread\
@@ -139,13 +149,12 @@ Vaccine: Proportion of people who disagree that vaccines are effective for child
 Data Source: http://gapm.io/dvaccine_confidence\
 IQR: 5.47500, variance: 3.927970e+01, standard deviation: 6.267352e+00
 
-## General observations 
+## General observations
 There are some variables with significant left skew i.e beyond a certain threshold, the variable will most likely not affect the target variable any more (e.g water, sanitation).
 There are some variables with significant right skew i.e below a certain threshold, the variable will most likely not affect the target variable any more (e.g debt).
-There are a lot of variables with substantial numbers of missing values.
+There are a lot of variables with substantial numbers of missing values,which we fill with mean imputation.
 
-## Mean imputation:
-```{r}
+```{r,echo=F}
 df_variables$parliament[is.na(df_variables$parliament)] <- mean(df_variables$parliament, na.rm=TRUE)
 df_variables$hapiscore_whr[is.na(df_variables$hapiscore_whr)] <- mean(df_variables$hapiscore_whr, na.rm=TRUE)
 df_variables$aged_15plus_unemployment_rate_percent[is.na(df_variables$aged_15plus_unemployment_rate_percent)] <- mean(df_variables$aged_15plus_unemployment_rate_percent, na.rm=TRUE)
@@ -169,10 +178,9 @@ df_variables$exports[is.na(df_variables$exports)] <- mean(df_variables$exports, 
 df_variables$vaccine[is.na(df_variables$vaccine)] <- mean(df_variables$vaccine, na.rm=TRUE)
 ```
 
-
-## Dimension reduction via PCA:
-
-To reduce the number of variables to apply to our regression model, we propose applying PCA to all feature variables, picking the first PC which accounts for the largest variation in the data, and choosing the variable with above average contribution.
+## Regression
+#### Dimension reduction via PCA
+To reduce the number of variables to apply to our regression model, we propose applying PCA to all feature variables, picking the first PC which accounts for the largest variation in the data, and choosing the variables with above average contribution.
 ```{r}
 pr_hdi=prcomp(df_variables%>%dplyr::select(-hdiindex),scale=T,center=T)
 ```
@@ -183,32 +191,46 @@ fviz_contrib(pr_hdi,choice="var")
 
 Based on the proposed plan, we choose to select the following variable: internetusers, broadband, edu, mortality, sanitation, corruption, incomeperperson,wateraccess, hapiscore_whr and right.
 
-Before we apply the regression model, we check the linearity assumption for the variables, and see that most variables have a linear relationship with HDI, except for incomeperperson, which has a linear relationship once a log transformation has been applied to it.
+#### Linearity assumptions
+Before we apply the regression model, we check the linearity assumption for these variables, and see that most variables have a linear relationship with HDI, except for incomeperperson, which has a linear relationship once a log transformation has been applied to it.
 
-```{r,fig.width=10,fig.height=10}
+```{r,echo=F}
+df_variables_2=df_variables%>%dplyr::select(internetusers, broadband, edu, mortality, sanitation, corruption,incomeperperson,wateraccess, hapiscore_whr,right,hdiindex)%>%mutate(logincomeperperson=log(incomeperperson))%>%dplyr::select(-incomeperperson)
+```
+
+```{r,fig.width=10,fig.height=10,echo=F}
 par(mfrow=c(5,2))
-for (k in c("internetusers","broadband","edu","mortality","sanitation","corruption","incomeperperson","wateraccess","hapiscore_whr","right")){
-  if (k=="incomeperperson"){
-    plot(x=log(df_variables_2[[k]]),y=df_variables_2$hdiindex,ylab="HDI index",xlab=paste0("Value for ",k))
-  }else{
-  plot(x=df_variables_2[[k]],y=df_variables_2$hdiindex,ylab="HDI index",xlab=paste0("Value for ",k))}}
+for (k in c("internetusers","broadband","edu","mortality","sanitation","corruption","logincomeperperson","wateraccess","hapiscore_whr","right")){
+  plot(x=df_variables_2[[k]],y=df_variables_2$hdiindex,ylab="HDI index",xlab=paste0("Value for ",k))}
+```
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+
+#### Correlation matrix
+```{r,echo=F}
+ggcorr(df_variables_2%>%dplyr::select(-hdiindex),geom="circle",layout.exp = 1)+ggtitle("Full variable correlation matrix")
 ```
 
+Based on our correlation plot, most of our variables are strongly correlated with each other. As such, if we are to introduce them as they are right now, the model would suffer from multicollinearity. Consequently, we decide to conduct an backwards regression model in order to remove some of the variables based on the Aikaike Information Criterion.
 
-
-```{r}
-df_variables_2=df_variables%>%dplyr::select(internetusers, broadband, edu, mortality, sanitation, corruption,incomeperperson,wateraccess, hapiscore_whr,right,hdiindex)%>%mutate(logincomeperperson=log(incomeperperson))%>%select(-incomeperperson)
-ggcorr(df_variables_2%>%dplyr::select(-hdiindex),geom="circle",layout.exp = 1)+ggtitle("Full correlation matrix after imputation")
-```
-
-Based on our correlation plot, most of our variables are strongly correlated with each other. As such, if we are to introduce them as they are right now, the model would suffer from multicollinearity. As such, we decide to conduct an AIC regression model in order to remove some of the variables based on the Aikaike Information Criterion.
-
-## Step backwards regression:
-To reduce the number of regression variables further to the most important factors affecting a country's development level, we use step backwards regression with an aim of getting the most 3-5 important predictors.
-
+#### Step backwards regression
+\
+To reduce the number of regression variables further to the most important factors affecting a country's development level, we use step backwards regression with an aim of getting the most 3-5 important predictors. We combine this with 10-fold cross-validation to get the most robust iteration.
 
 ```{r}
-train.control <- trainControl(method = "cv", number = 5)
+train.control <- trainControl(method = "cv", number = 10)
 res.lm <- lm(hdiindex ~., data = df_variables_2)
 # Train the model
 set.seed(123)
@@ -224,72 +246,118 @@ Our step backwards model indicates that a 5 regressor model has the lowest AIC t
 ```{r}
 step.model$bestTune
 ```
+
 ```{r}
 summary(step.model$finalModel)
 ```
-Our five variable models include internetusers, education, mortality, logincomeperperson, and wateraccess.
+Our five variable models include broadband, edu, mortality, logincomeperperson, and wateraccess.
 
 ```{r}
-final_model_aic=lm(hdiindex~internetusers+edu+mortality+logincomeperperson+wateraccess,data=df_variables_2)
+final_model_aic=lm(hdiindex~broadband+edu+mortality+logincomeperperson+wateraccess,data=df_variables_2)
 ```
 
-Some model diagnostics:
-
+#### Model diagnostics
+\
 The residual plots seem to exhibit homoskedasticity, and most of the residuals follow a normal distribution. This satisfies the linearity assumption.
-```{r}
+```{r,echo=F}
 par(mfrow=c(1,2))
 plot(final_model_aic,which=c(1))
 plot(final_model_aic,which=c(2))
 ```
+\
+\
+\
 
 We check the VIF of the model to see if the strong correlations between the chosen variables have introduced multicollinearity into the model.
 
-```{r}
+```{r,echo=F}
+library(car)
 vif(final_model_aic)
 ```
-The VIF values for the model are not concerningly high, except for the value of internet users, which is slightly above the threshold of 5. While this means that the model does have some signs of multicollinearity, it is not very severe.
-
-In the context of possible multicollinearity between variables, linear regression might not be the best method. Instead, we try a random forest model that does not mind the multicollinear nature of our variables.
-
-
-## Classification Tree
-```{r}
-set.seed(123)
-df.cart <- train(hdiindex ~ hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, 
-                 data=df_variables,
-                 method="rpart1SE", 
-                 trControl =trainControl(method = "cv", number=5) )
-df.cart
-```
-
-```{r}
-library(rattle)
-fancyRpartPlot(df.cart$finalModel)
-```
-
-```{r}
-varImp(df.cart)$importance%>%arrange(desc(Overall))%>%head(5)
-```
-Our tree model indicates that the top 5 variables that affect HDI are incomeperperson, internetusers, wateraccess, broadband and mortality.
+Based on the VIF values, the model does not have severe multicollinearity issues. Regardless, it may be better to try tree-based models that does not mind does not mind the multicollinear nature of our variables. To that end, we start with a random forest model.
 
 ## Random Forest
+\
+We utilize random forest as a form of variable reduction, given that it allows for variables to be ranked in terms of their importance in dissecting the data. 
+
 ```{r}
 set.seed(123)
 df.RF.cv <- train(hdiindex~hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, data=df_variables,
                   method="rf", importance=TRUE, 
-                  trControl =trainControl(method = "cv", number=5) )
+                  trControl =trainControl(method = "cv", number=10))
 df.RF.cv$finalModel
 ```
 
-```{r}
+#### Important variables
+\
+Our random forest model indicates that sdi, edu, incomeperperson, corruption and broadband are the top 5 variables that affect HDI the most:
+```{r,echo=F}
 varImp(df.RF.cv)$importance%>%arrange(desc(Overall))%>%head(5)
 ```
 
-Our random forest model indicates that sdi, edu, incomeperperson, corruption and sanitation are the top 5 variables that affect HDI the most.
+We also construct a single regression tree:
+
+## Regression Tree
+\
+```{r}
+set.seed(123)
+df.cart <- train(hdiindex ~hapiscore_whr+parliament+aged_15plus_unemployment_rate_percent+right+sanitation+edu+internetusers+sdi+forestcoverage+militaryexpenditure+mortality+wateraccess+broadband+agriculture+debt+gdppercapita_growth+foodinsecurity+corruption+incomeperperson+exports+vaccine, 
+                 data=df_variables,
+                 method="rpart1SE", 
+                 trControl =trainControl(method = "cv", number=10) )
+df.cart
+```
+We draw the regression tree to get an indication of the top 5 variables by variable importance:
+```{r,echo=F}
+library(rattle)
+fancyRpartPlot(df.cart$finalModel)
+```
+
+#### Important variables
+\
+Our tree model indicates that the top 5 variables that affect HDI are incomeperperson, internetusers, wateraccess, broadband and mortality.
+
+```{r,echo=F}
+varImp(df.cart)$importance%>%arrange(desc(Overall))%>%head(5)
+```
+Our tree model indicates that the top 5 variables that affect HDI are incomeperperson, internetusers, wateraccess, broadband and mortality.
+
+
 ## Model comparisons:
+\
+```{r,echo=F}
+tree_rmse=RMSE(predict(df.cart),df_variables$hdiindex)
+rf_rmse=RMSE(predict(df.RF.cv),df_variables$hdiindex)
+lm_aic_rmse=RMSE(predict(final_model_aic),df_variables$hdiindex)
+```
+
+```{r,echo=F}
+rsq_tree=df.cart$results['Rsquared']
+rsq_rf=max(df.RF.cv$results['Rsquared'])
+rsq_reg=summary(final_model_aic)$r.squared
+```
+
+```{r,echo=F}
+model=c("5 variable regression","Random Forest","CART")
+rmse=c(lm_aic_rmse,rf_rmse,tree_rmse)
+rsq=unlist(c(rsq_reg,rsq_rf,rsq_tree))
+```
+
+```{r,echo=F}
+final_model_comps=data.frame(Model=model,
+           RMSE=rmse,
+           R_squared=rsq)
+```
 
 ```{r}
-
+final_model_comps
 ```
+
+## Summary
+In summary, our three models propose different variables that have significant effects on a country's level of development:
+1. 5-variable regression: broadband, edu, mortality,incomeperperson, and wateraccess.
+2. Random forest: sdi, edu, incomeperperson, corruption and broadband.
+3. CART: incomeperperson, internetusers, wateraccess, broadband and mortality.
+In all 3 models, broadband and education are present. This makes sense: HDI is a proxy for standards of living, which tends to improve if an individual has more income to spend to improve said standards of living. Additionally, in the 21st century with the pace of technological innovation, standards of living are increasingly tied to digital participation, making broadband important.
 
 
